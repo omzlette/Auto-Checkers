@@ -20,8 +20,6 @@ class Checkers:
         self.windowsName = 'Checkers'
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption(self.windowsName)
-        
-        self.turn = turn
 
         if board is None:
             self.board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
@@ -34,29 +32,26 @@ class Checkers:
                           ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
         else:
             self.board = board
-        self.selectedPiece = None
-        self.mandatory_moves = []
-        self.validMoves = None
-        self.capturePos = []
+        self.turn = turn # current turn
     
     ## Run game
     def run(self):
         running = True
+        player1 = User('b', self.board)
+        player2 = User('w', self.board)
         while running:
-            # player1 = HumanPlayer('b')
-            player2 = HumanPlayer('w')
-            player1 = Minimax('b')
+            # player1 = Minimax('b')
             # player2 = Minimax('w')
 
-            if self.turn == 'b' and not player1.user:
-                _, piece, moveto = player1.playMM(self)
-                self.select_piece(piece[0], piece[1])
-                self.move_piece(moveto[0], moveto[1])
+            # if self.turn == 'b' and not player1.user:
+            #     _, piece, moveto = player1.playMM(self)
+            #     self.select_piece(piece[0], piece[1])
+            #     self.move_piece(moveto[0], moveto[1])
 
-            elif self.turn == 'w' and not player2.user:
-                _, piece, moveto = player2.playMM(self)
-                self.select_piece(piece[0], piece[1])
-                self.move_piece(moveto[0], moveto[1])
+            # elif self.turn == 'w' and not player2.user:
+            #     _, piece, moveto = player2.playMM(self)
+            #     self.select_piece(piece[0], piece[1])
+            #     self.move_piece(moveto[0], moveto[1])
 
             self.screen.fill(BROWN)
             self.draw_board()
@@ -64,11 +59,11 @@ class Checkers:
             self.debug_text()
             pygame.display.flip()
 
-            if self.is_game_over():
+            if self.is_game_over(self.board):
                 running = False
-                if self.countBlack() == 0:
+                if self.countBlack(self.board) == 0:
                     print("White wins")
-                elif self.countWhite() == 0:
+                elif self.countWhite(self.board) == 0:
                     print("Black wins")
                 else:
                     print("Draw")
@@ -79,10 +74,10 @@ class Checkers:
                 if event.type == pygame.MOUSEBUTTONDOWN and player1.user and player2.user:
                     if self.turn == 'b':
                         row, col = player1.get_mouse_pos()
-                        self.handle_mouse_click(row, col)
+                        player1.handle_mouse_click(row, col)
                     elif self.turn == 'w':
                         row, col = player2.get_mouse_pos()
-                        self.handle_mouse_click(row, col)
+                        player2.handle_mouse_click(row, col)
         pygame.quit()
     
     ## Draw board and pieces
@@ -112,13 +107,33 @@ class Checkers:
                 text = font.render(f'{row}, {col}', True, (255, 0, 0))
                 self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
 
-    def handle_mouse_click(self, row, col):
-        if (self.selectedPiece is None or self.selectedPiece == (row, col)):
-            self.select_piece(row, col)
-            # print('select', self.selectedPiece, self.validMoves, self.turn, self.capturePos, self.mandatory_moves)
-        else:
-            self.move_piece(row, col)
-            # print('move', self.selectedPiece, self.validMoves, self.turn, self.capturePos, self.mandatory_moves)
+    def countBlack(self, board):
+        count = 0
+        for row in range(rows):
+            for col in range(cols):
+                if board[row][col] == 'b' or board[row][col] == 'B':
+                    count += 1
+        return count
+
+    def countWhite(self, board):
+        count = 0
+        for row in range(rows):
+            for col in range(cols):
+                if board[row][col] == 'w' or board[row][col] == 'W':
+                    count += 1
+        return count
+    
+    def is_game_over(self, board):
+        return self.countBlack(board) == 0 or self.countWhite(board) == 0
+
+class Player():
+    def __init__(self, turn, board):
+        self.turn = turn
+        self.board = board
+        self.selectedPiece = None
+        self.mandatory_moves = []
+        self.validMoves = None
+        self.capturePos = []
 
     def select_piece(self, row, col):
         # check if piece is valid and not conflicting with mandatory capture
@@ -133,6 +148,7 @@ class Checkers:
                 if self.turn == 'b':
                     self.selectedPiece = (row, col)
                     self.validMoves = self.get_valid_moves(row, col)
+                    print(self.selectedPiece, self.validMoves)
                 else:
                     print("Not your turn")
             elif self.board[row][col].lower() == 'w':
@@ -271,28 +287,32 @@ class Checkers:
         new_board.select_piece(piece[0], piece[1])
         new_board.move_piece(move[0], move[1])
         return new_board
-
-    def countBlack(self):
+    
+    def countBlack(self, board):
         count = 0
         for row in range(rows):
             for col in range(cols):
-                if self.board[row][col] == 'b' or self.board[row][col] == 'B':
+                if board[row][col] == 'b' or board[row][col] == 'B':
                     count += 1
         return count
 
-    def countWhite(self):
+    def countWhite(self, board):
         count = 0
         for row in range(rows):
             for col in range(cols):
-                if self.board[row][col] == 'w' or self.board[row][col] == 'W':
+                if board[row][col] == 'w' or board[row][col] == 'W':
                     count += 1
         return count
     
-    def is_game_over(self):
-        return self.countBlack() == 0 or self.countWhite() == 0
+    def is_game_over(self, board):
+        return self.countBlack(board) == 0 or self.countWhite(board) == 0
 
-class HumanPlayer():
-    def __init__(self, color):
+    def copy_board(self):
+        return copy.deepcopy(self.board)
+
+class User(Player):
+    def __init__(self, color, board):
+        super().__init__(color, board)
         self.color = color
         self.user = True
 
@@ -300,10 +320,17 @@ class HumanPlayer():
         x, y = pygame.mouse.get_pos()
         row, col = y // squareSize, x // squareSize
         return row, col
+    
+    def handle_mouse_click(self, row, col):
+        if (self.selectedPiece is None or self.selectedPiece == (row, col)):
+            self.select_piece(row, col)
+        else:
+            self.move_piece(row, col)
+            print(id(self.board))
 
-class Minimax():
+class Minimax(Player):
     def __init__(self, color):
-        super().__init__(color)
+        super().__init__(color, None)
         self.oppColor = 'w' if self.color == 'b' else 'b'
         self.user = False
 
@@ -330,13 +357,13 @@ class Minimax():
     # TODO2: when using in minimax use selectables and loop through their moves and make_move() for each move
 
     def minimax(self, board, depth, maximizing):
-        if depth == 0 or board.is_game_over():
+        if depth == 0 or self.is_game_over(board):
             return self.evaluate_board(board), None, None
         
         if maximizing:
             maxEval = -np.inf
             for piece, moveto in self.get_all_moves(self.color, board).items():
-                new_board = board.copy()
+                new_board = self.copy_board(board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)
                 maxEval = max(maxEval, eval)
                 if maxEval == eval:
@@ -347,7 +374,7 @@ class Minimax():
         else:
             minEval = np.inf
             for piece, moveto in board.get_all_moves(self.oppColor, board).items():
-                new_board = board.copy()
+                new_board = self.copy_board(board)
                 eval, _, _ = self.minimax(new_board, depth-1, True)
                 minEval = min(minEval, eval)
                 if minEval == eval:

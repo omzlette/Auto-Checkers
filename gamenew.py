@@ -38,8 +38,8 @@ class Checkers:
         running = True
         # player1 = User('b', self.board)
         # player2 = User('w', self.board)
-        player1 = Minimax('b', 5, self.board)
-        player2 = Minimax('w', 5, self.board)
+        player1 = Minimax('b', 3, self.board)
+        player2 = Minimax('w', 3, self.board)
         while running:
             if self.turn == 'b':
                 if player1.user:
@@ -164,7 +164,6 @@ class Player():
             if board[row][col].lower() == 'b':
                 if turn == 'b':
                     selectedPiece = (row, col)
-                    print(self.get_valid_moves(row, col, board))
                     validMoves, capturePos = self.get_valid_moves(row, col, board)
                 else:
                     print("Not your turn (White turn)")
@@ -288,7 +287,6 @@ class Player():
             self.validMoves = None
             if not self.mandatory_moves:
                 turn = 'w' if turn == 'b' else 'b'
-                self.mandatory_moves = self.get_mandatory_capture(turn, board)
         else:
             if board[rowMove][colMove].lower() == self.turn and self.mandatory_moves == []:
                 self.selectedPiece = (rowMove, colMove)
@@ -427,6 +425,7 @@ class Minimax(Player):
         new_board = copy.deepcopy(board)
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
         new_board, _ = self.move_piece(move, turn, new_board)
+        self.init_variables()
         return new_board
 
 def main():

@@ -1,7 +1,6 @@
 import pygame
 from pygame.locals import *
 import numpy as np
-import random
 import copy
 
 WHITE = (255, 255, 255)
@@ -39,8 +38,8 @@ class Checkers:
         running = True
         # player1 = User('b', self.board)
         # player2 = User('w', self.board)
-        player1 = Minimax('b', self.board)
-        player2 = Minimax('w', self.board)
+        player1 = Minimax('b', 5, self.board)
+        player2 = Minimax('w', 5, self.board)
         while running:
             if self.turn == 'b':
                 if player1.user:
@@ -143,44 +142,47 @@ class Player():
     def __init__(self, turn, board):
         self.turn = turn
         self.board = board
+        self.init_variables()
+
+    def init_variables(self):
         self.selectedPiece = None
         self.mandatory_moves = []
         self.validMoves = None
         self.capturePos = []
 
-    def select_piece(self, row, col, board=None):
+    def select_piece(self, row, col, turn, board):
         # check if piece is valid and not conflicting with mandatory capture
-        if board is None:
-            board = self.board
+        selectedPiece, validMoves, capturePos = [], [], []
+        self.mandatory_moves = self.get_mandatory_capture(turn, board)
         if self.mandatory_moves:
             if [row, col] in self.mandatory_moves:
-                self.selectedPiece = (row, col)
-                self.validMoves = self.get_valid_moves(row, col, board)
+                selectedPiece = [row, col]
+                validMoves, capturePos = self.get_valid_moves(row, col, board)
             else:
                 print("You must capture")
         else:
             if board[row][col].lower() == 'b':
-                if self.turn == 'b':
-                    self.selectedPiece = (row, col)
-                    self.validMoves = self.get_valid_moves(row, col, board)
-                    print(self.selectedPiece, self.validMoves)
+                if turn == 'b':
+                    selectedPiece = (row, col)
+                    print(self.get_valid_moves(row, col, board))
+                    validMoves, capturePos = self.get_valid_moves(row, col, board)
                 else:
                     print("Not your turn (White turn)")
             elif board[row][col].lower() == 'w':
-                if self.turn == 'w':
-                    self.selectedPiece = (row, col)
-                    self.validMoves = self.get_valid_moves(row, col, board)
+                if turn == 'w':
+                    selectedPiece = [row, col]
+                    validMoves, capturePos = self.get_valid_moves(row, col, board)
                 else:
                     print("Not your turn (Black turn)")
             else:
                 print("No piece selected")
+        return selectedPiece, validMoves, capturePos
 
-    def get_valid_moves(self, row, col, board=None):
-        if board is None:
-            board = self.board
+    def get_valid_moves(self, row, col, board):
         moves = []
-        capture_moves = self.can_capture(row, col, board)
-        if capture_moves is None:
+        capturePos = []
+        moves, capturePos = self.can_capture(row, col, board)
+        if moves == []:
             if board[row][col] == 'b':
                 if 0 <= row+1 <= 7 and 0 <= col-1 <= 7 and board[row+1][col-1] == '-':
                     moves.append([row+1, col-1])
@@ -206,15 +208,11 @@ class Player():
                                 break
                         else:
                             break                            
-        else:
-            moves.extend(capture_moves)
-
-        return moves if moves else None
+        return (moves, capturePos) if moves else ([], [])
     
-    def can_capture(self, row, col, board=None):
-        if board is None:
-            board = self.board
+    def can_capture(self, row, col, board):
         moves = []
+        capturePos = []
         piece = board[row][col]
         if piece == 'B' or piece == 'W':
             capturable = 'w' if piece == 'B' else 'b'
@@ -228,7 +226,7 @@ class Player():
                             continue
                         elif board[checkrow][checkcol].lower() == capturable:
                             if 0 <= checkrow+direction[0] <= 7 and 0 <= checkcol+direction[1] <= 7 and board[checkrow+direction[0]][checkcol+direction[1]] == '-':
-                                self.capturePos.append([checkrow, checkcol]) if [checkrow, checkcol] not in self.capturePos else None
+                                capturePos.append([checkrow, checkcol]) if [checkrow, checkcol] not in capturePos else None
                                 moves.append([checkrow+direction[0], checkcol+direction[1]])
                                 break
                             else:
@@ -240,75 +238,66 @@ class Player():
         else:
             if piece == 'b':
                 if 0 <= row+2 <= 7 and 0 <= col-2 <= 7 and board[row+1][col-1].lower() == 'w' and board[row+2][col-2] == '-':
-                    self.capturePos.append([row+1, col-1]) if [row+1, col-1] not in self.capturePos else None
+                    capturePos.append([row+1, col-1]) if [row+1, col-1] not in capturePos else None
                     moves.append([row+2, col-2])
                 if 0 <= row+2 <= 7 and 0 <= col+2 <= 7 and board[row+1][col+1].lower() == 'w' and board[row+2][col+2] == '-':
-                    self.capturePos.append([row+1, col+1]) if [row+1, col+1] not in self.capturePos else None
+                    capturePos.append([row+1, col+1]) if [row+1, col+1] not in capturePos else None
                     moves.append([row+2, col+2])
 
             elif piece == 'w':
                 if 0 <= row-2 <= 7 and 0 <= col-2 <= 7 and board[row-1][col-1].lower() == 'b' and board[row-2][col-2] == '-':
-                    self.capturePos.append([row-1, col-1]) if [row-1, col-1] not in self.capturePos else None
+                    capturePos.append([row-1, col-1]) if [row-1, col-1] not in capturePos else None
                     moves.append([row-2, col-2])
                 if 0 <= row-2 <= 7 and 0 <= col+2 <= 7 and board[row-1][col+1].lower() == 'b' and board[row-2][col+2] == '-':
-                    self.capturePos.append([row-1, col+1]) if [row-1, col+1] not in self.capturePos else None
+                    capturePos.append([row-1, col+1]) if [row-1, col+1] not in capturePos else None
                     moves.append([row-2, col+2])
 
-        return moves if moves else None
+        return moves, capturePos
 
-    def move_piece(self, row, col, board=None):
-        print('this: ', self.turn, row, col, self.selectedPiece, self.validMoves)
-        if board is None:
-            board = self.board
-        if self.validMoves is not None and [row, col] in self.validMoves:
-            board[row][col] = board[self.selectedPiece[0]][self.selectedPiece[1]]
-            board[self.selectedPiece[0]][self.selectedPiece[1]] = '-'
-            if self.capturePos != []:
-                idxtoRemove = self.validMoves.index([row, col])
-                board[self.capturePos[idxtoRemove][0]][self.capturePos[idxtoRemove][1]] = '-'
-                self.capturePos = []
-                self.mandatory_moves = self.get_mandatory_capture(board)
-                # print('after capture:',self.mandatory_moves)
-            self.make_king(row, col, board)
-            self.selectedPiece = None
-            self.validMoves = None
-            if not self.mandatory_moves:
-                self.turn = 'w' if self.turn == 'b' else 'b'
-                self.mandatory_moves = self.get_mandatory_capture(board)
-            # print(self.turn, self.mandatory_moves)
-        else:
-            if board[row][col].lower() == self.turn and self.mandatory_moves == []:
-                self.selectedPiece = (row, col)
-                self.validMoves = self.get_valid_moves(row, col, board)
-            else:
-                self.selectedPiece = None
-                self.validMoves = None
-        print('next: ', self.turn, row, col, self.selectedPiece, self.validMoves)
-
-    def get_mandatory_capture(self, board=None):
-        if board is None:
-            board = self.board
+    def get_mandatory_capture(self, turn, board):
         mandatory_moves = []
         for row in range(rows):
             for col in range(cols):
-                if (board[row][col] == 'b' or board[row][col] == 'B') and self.turn == 'b':
-                    # print('b mandatory checking', row, col)
-                    if self.can_capture(row, col, board):
-                        # print('found b mandatory')
+                if (board[row][col] == 'b' or board[row][col] == 'B') and turn == 'b':
+                    if self.can_capture(row, col, board)[1]:
                         mandatory_moves.append([row, col])
-                elif (board[row][col] == 'w' or board[row][col] == 'W') and self.turn == 'w':
-                    if self.can_capture(row, col, board):
+                elif (board[row][col] == 'w' or board[row][col] == 'W') and turn == 'w':
+                    if self.can_capture(row, col, board)[1]:
                         mandatory_moves.append([row, col])
         return mandatory_moves if mandatory_moves else []
     
-    def make_king(self, row, col, board=None):
-        if board is None:
-            board = self.board
+    def make_king(self, row, col, board):
         if board[row][col] == 'b' and row == 7:
             board[row][col] = 'B'
         elif board[row][col] == 'w' and row == 0:
             board[row][col] = 'W'
+        return board
     
+    def move_piece(self, moveto, turn, board):
+        [rowMove, colMove] = moveto
+        if self.validMoves is not None and [rowMove, colMove] in self.validMoves:
+            board[rowMove][colMove] = board[self.selectedPiece[0]][self.selectedPiece[1]]
+            board[self.selectedPiece[0]][self.selectedPiece[1]] = '-'
+            if self.capturePos != []:
+                idxtoRemove = self.validMoves.index([rowMove, colMove])
+                board[self.capturePos[idxtoRemove][0]][self.capturePos[idxtoRemove][1]] = '-'
+                self.capturePos = []
+                self.mandatory_moves = self.get_mandatory_capture(turn, board)
+            board = self.make_king(rowMove, colMove, board)
+            self.selectedPiece = None
+            self.validMoves = None
+            if not self.mandatory_moves:
+                turn = 'w' if turn == 'b' else 'b'
+                self.mandatory_moves = self.get_mandatory_capture(turn, board)
+        else:
+            if board[rowMove][colMove].lower() == self.turn and self.mandatory_moves == []:
+                self.selectedPiece = (rowMove, colMove)
+                self.validMoves, self.capturePos = self.get_valid_moves(rowMove, colMove, board)
+            else:
+                self.selectedPiece = None
+                self.validMoves = None
+        return board, turn
+
     def countBlack(self, board):
         count = 0
         for row in range(rows):
@@ -328,9 +317,6 @@ class Player():
     def is_game_over(self, board):
         return self.countBlack(board) == 0 or self.countWhite(board) == 0
 
-    def copy_board(self):
-        return copy.deepcopy(self.board)
-
 class User(Player):
     def __init__(self, turn, board):
         super().__init__(turn, board)
@@ -343,19 +329,20 @@ class User(Player):
     
     def handle_mouse_click(self, row, col):
         if (self.selectedPiece is None or self.selectedPiece == (row, col)):
-            self.select_piece(row, col)
+            self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.board)
         else:
-            self.move_piece(row, col)
+            self.move_piece([row, col], self.turn, self.board)
 
 class Minimax(Player):
-    def __init__(self, turn, board):
+    def __init__(self, turn, depth, board):
         super().__init__(turn, board)
         self.botTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
+        self.depth = depth
 
     def playMM(self, board):
-        _, bestPiece, bestMove = self.minimax(board, 5, True)
+        _, bestPiece, bestMove = self.minimax(board, self.depth, True)
         return bestPiece, bestMove
     
     def evaluate_board(self, board):
@@ -372,9 +359,6 @@ class Minimax(Player):
                     value -= 3
         return value
 
-    # TODO: make get_all_moves() returns a dict of selectables and their moves then use it in minimax
-    # TODO2: when using in minimax use selectables and loop through their moves and make_move() for each move
-
     def minimax(self, board, depth, maximizing):
         if depth == 0 or self.is_game_over(board):
             return self.evaluate_board(board), None, None
@@ -382,7 +366,7 @@ class Minimax(Player):
         if maximizing:
             maxEval = -np.inf
             for piece, moveto in self.get_all_moves(self.botTurn, board).items():
-                new_board = self.copy_board()
+                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)
                 maxEval = max(maxEval, eval)
                 if maxEval == eval:
@@ -393,7 +377,7 @@ class Minimax(Player):
         else:
             minEval = np.inf
             for piece, moveto in self.get_all_moves(self.oppTurn, board).items():
-                new_board = self.copy_board()
+                new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, True)
                 minEval = min(minEval, eval)
                 if minEval == eval:
@@ -429,16 +413,21 @@ class Minimax(Player):
         moves = {}
         for row in range(rows):
             for col in range(cols):
-                if board[row][col].lower() == player and self.get_valid_moves(row, col) is not None:
-                    for move in self.get_valid_moves(row, col):
+                if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
+                    for move in self.get_valid_moves(row, col, board)[0]:
                         moves[(row, col)] = move
         return moves
-
+    
     def update_board(self, board, piece, move):
-        new_board = board
-        self.select_piece(piece[0], piece[1], new_board)
-        self.move_piece(move[0], move[1], new_board)
-        return new_board, self.turn
+        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
+        board, turn = self.move_piece(move, self.turn, board)
+        return board, turn
+
+    def simulate_game(self, piece, move, turn, board):
+        new_board = copy.deepcopy(board)
+        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
+        new_board, _ = self.move_piece(move, turn, new_board)
+        return new_board
 
 def main():
     board = Checkers()

@@ -369,3 +369,8 @@ for checkrow in range(rows):
             print('minordiag', checkrow, checkcol, fakeboard[checkrow][checkcol])
             if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and fakeboard[checkrow][checkcol] == ' ':
                 print('minordiag', checkrow, checkcol, fakeboard[checkrow][checkcol])
+
+def testVar(a):
+    newa = a
+    newa += 1
+    return newa

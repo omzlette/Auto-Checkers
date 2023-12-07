@@ -42,14 +42,34 @@ class Checkers:
         player1 = Minimax('b', self.board)
         player2 = Minimax('w', self.board)
         while running:
-            if self.turn == 'b' and not player1.user:
-                piece, move = player1.playMM(self.board)
-                self.board = player1.update_board(self.board, piece, move)
-                self.turn = 'w'
-            elif self.turn == 'w' and not player2.user:
-                piece, move = player2.playMM(self.board)
-                self.board = player2.update_board(self.board, piece, move)
-                self.turn = 'b'
+            if self.turn == 'b':
+                if player1.user:
+                    for event in pygame.event.get():
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            row, col = player1.get_mouse_pos()
+                            player1.handle_mouse_click(row, col)
+                else:
+                    print('minimax 1', self.turn)
+                    bestPiece, bestMove = player1.playMM(self.board)
+                    if bestPiece is not None and bestMove is not None:
+                        self.board, self.turn = player1.update_board(self.board, bestPiece, bestMove)
+                        player1.turn = self.turn
+                        player2.turn = self.turn
+                    # self.turn = 'w'
+            elif self.turn == 'w':
+                if player2.user:
+                    for event in pygame.event.get():
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            row, col = player2.get_mouse_pos()
+                            player2.handle_mouse_click(row, col)
+                else:
+                    print('minimax 2', self.turn)
+                    bestPiece, bestMove = player2.playMM(self.board)
+                    if bestPiece is not None and bestMove is not None:
+                        self.board, self.turn = player2.update_board(self.board, bestPiece, bestMove)
+                        player1.turn = self.turn
+                        player2.turn = self.turn
+                    # self.turn = 'b'
 
             self.screen.fill(BROWN)
             self.draw_board()
@@ -69,13 +89,8 @@ class Checkers:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     running = False
-                if event.type == pygame.MOUSEBUTTONDOWN and player1.user and player2.user:
-                    if self.turn == 'b':
-                        row, col = player1.get_mouse_pos()
-                        player1.handle_mouse_click(row, col)
-                    elif self.turn == 'w':
-                        row, col = player2.get_mouse_pos()
-                        player2.handle_mouse_click(row, col)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    print(self.turn, player1.user, player2.user)
         pygame.quit()
     
     ## Draw board and pieces
@@ -150,13 +165,13 @@ class Player():
                     self.validMoves = self.get_valid_moves(row, col, board)
                     print(self.selectedPiece, self.validMoves)
                 else:
-                    print("Not your turn")
+                    print("Not your turn (White turn)")
             elif board[row][col].lower() == 'w':
                 if self.turn == 'w':
                     self.selectedPiece = (row, col)
                     self.validMoves = self.get_valid_moves(row, col, board)
                 else:
-                    print("Not your turn")
+                    print("Not your turn (Black turn)")
             else:
                 print("No piece selected")
 
@@ -242,6 +257,7 @@ class Player():
         return moves if moves else None
 
     def move_piece(self, row, col, board=None):
+        print('this: ', self.turn, row, col, self.selectedPiece, self.validMoves)
         if board is None:
             board = self.board
         if self.validMoves is not None and [row, col] in self.validMoves:
@@ -267,6 +283,7 @@ class Player():
             else:
                 self.selectedPiece = None
                 self.validMoves = None
+        print('next: ', self.turn, row, col, self.selectedPiece, self.validMoves)
 
     def get_mandatory_capture(self, board=None):
         if board is None:
@@ -317,7 +334,6 @@ class Player():
 class User(Player):
     def __init__(self, turn, board):
         super().__init__(turn, board)
-        self.turn = turn
         self.user = True
 
     def get_mouse_pos(self):
@@ -334,7 +350,8 @@ class User(Player):
 class Minimax(Player):
     def __init__(self, turn, board):
         super().__init__(turn, board)
-        self.oppTurn = 'w' if self.turn == 'b' else 'b'
+        self.botTurn = 'b' if turn == 'b' else 'w'
+        self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
 
     def playMM(self, board):
@@ -364,7 +381,7 @@ class Minimax(Player):
         
         if maximizing:
             maxEval = -np.inf
-            for piece, moveto in self.get_all_moves(self.turn, board).items():
+            for piece, moveto in self.get_all_moves(self.botTurn, board).items():
                 new_board = self.copy_board()
                 eval, _, _ = self.minimax(new_board, depth-1, False)
                 maxEval = max(maxEval, eval)
@@ -421,7 +438,7 @@ class Minimax(Player):
         new_board = board
         self.select_piece(piece[0], piece[1], new_board)
         self.move_piece(move[0], move[1], new_board)
-        return new_board
+        return new_board, self.turn
 
 def main():
     board = Checkers()

@@ -39,8 +39,14 @@ class Checkers:
         # player1 = User('b', self.board)
         # player2 = User('w', self.board)
         player1 = Minimax('b', 3, self.board)
-        player2 = Minimax('w', 3, self.board)
+        player2 = Minimax('w', 5, self.board)
         while running:
+            self.screen.fill(BROWN)
+            self.draw_board()
+            self.draw_pieces()
+            self.debug_text()
+            pygame.display.flip()
+
             if self.turn == 'b':
                 if player1.user:
                     for event in pygame.event.get():
@@ -49,7 +55,8 @@ class Checkers:
                             player1.handle_mouse_click(row, col)
                 else:
                     print('minimax 1', self.turn)
-                    bestPiece, bestMove = player1.playMM(self.board)
+                    # bestPiece, bestMove = player1.playMM(self.board)
+                    bestPiece, bestMove = player1.playAB(self.board)
                     if bestPiece is not None and bestMove is not None:
                         self.board, self.turn = player1.update_board(self.board, bestPiece, bestMove)
                         player1.turn = self.turn
@@ -63,21 +70,16 @@ class Checkers:
                             player2.handle_mouse_click(row, col)
                 else:
                     print('minimax 2', self.turn)
-                    bestPiece, bestMove = player2.playMM(self.board)
+                    # bestPiece, bestMove = player2.playMM(self.board)
+                    bestPiece, bestMove = player2.playAB(self.board)
                     if bestPiece is not None and bestMove is not None:
                         self.board, self.turn = player2.update_board(self.board, bestPiece, bestMove)
                         player1.turn = self.turn
                         player2.turn = self.turn
                     # self.turn = 'b'
 
-            self.screen.fill(BROWN)
-            self.draw_board()
-            self.draw_pieces()
-            self.debug_text()
-            pygame.display.flip()
-
             if self.is_game_over(self.board):
-                running = False
+                # running = False
                 if self.countBlack(self.board) == 0:
                     print("White wins")
                 elif self.countWhite(self.board) == 0:
@@ -136,7 +138,52 @@ class Checkers:
         return count
     
     def is_game_over(self, board):
-        return self.countBlack(board) == 0 or self.countWhite(board) == 0
+        if self.countBlack(board) == 0 or self.countWhite(board) == 0:
+            return True
+        # for row in range(rows):
+        #     for col in range(cols):
+        #         if board[row][col].lower() == self.turn:
+        #             if not self.check_valid_moves(row, col, self.turn, board):
+        #                 return True
+        return False
+    
+    # def check_valid_moves(self, row, col, turn, board):
+    #     capturePiece = 'w' if turn == 'b' else 'b'
+    #     if board[row][col].lower() == turn:
+    #         if board[row][col] == 'b':
+    #             if 0 <= row+1 <= 7 and 0 <= col-1 <= 7 and board[row+1][col-1] == '-':
+    #                 return True
+    #             if 0 <= row+1 <= 7 and 0 <= col+1 <= 7 and board[row+1][col+1] == '-':
+    #                 return True
+    #             if 0 <= row+2 <= 7 and 0 <= col-2 <= 7 and board[row+1][col-1].lower() == capturePiece and board[row+2][col-2] == '-':
+    #                 return True
+    #             if 0 <= row+2 <= 7 and 0 <= col+2 <= 7 and board[row+1][col+1].lower() == capturePiece and board[row+2][col+2] == '-':
+    #                 return True
+
+    #         elif board[row][col] == 'w':
+    #             if 0 <= row-1 <= 7 and 0 <= col-1 <= 7 and board[row-1][col-1] == '-':
+    #                 return True
+    #             if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':
+    #                 return True
+    #             if 0 <= row-2 <= 7 and 0 <= col-2 <= 7 and board[row-1][col-1].lower() == capturePiece and board[row-2][col-2] == '-':
+    #                 return True
+    #             if 0 <= row-2 <= 7 and 0 <= col+2 <= 7 and board[row-1][col+1].lower() == capturePiece and board[row-2][col+2] == '-':
+    #                 return True
+
+    #         elif board[row][col] == 'B' or board[row][col] == 'W':
+    #             directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+    #             for direction in directions:
+    #                 for i in range(1, 8):
+    #                     checkrow = row + direction[0] * i
+    #                     checkcol = col + direction[1] * i
+    #                     if 0 <= checkrow <= 7 and 0 <= checkcol <= 7:
+    #                         if board[checkrow][checkcol] == '-':
+    #                             return True
+    #                         else:
+    #                             break
+    #                     else:
+    #                         break
+    #     return False
 
 class Player():
     def __init__(self, turn, board):
@@ -159,7 +206,7 @@ class Player():
                 selectedPiece = [row, col]
                 validMoves, capturePos = self.get_valid_moves(row, col, board)
             else:
-                print("You must capture")
+                print("You must capture @", self.mandatory_moves, "selected piece:", [row, col])
         else:
             if board[row][col].lower() == 'b':
                 if turn == 'b':
@@ -313,7 +360,14 @@ class Player():
         return count
     
     def is_game_over(self, board):
-        return self.countBlack(board) == 0 or self.countWhite(board) == 0
+        if self.countBlack(board) == 0 or self.countWhite(board) == 0:
+            return True
+        for row in range(rows):
+            for col in range(cols):
+                if board[row][col].lower() == self.turn:
+                    if self.get_valid_moves(row, col, board)[0] is None:
+                        return True
+        return False
 
 class User(Player):
     def __init__(self, turn, board):
@@ -343,6 +397,10 @@ class Minimax(Player):
         _, bestPiece, bestMove = self.minimax(board, self.depth, True)
         return bestPiece, bestMove
     
+    def playAB(self, board):
+        _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
+        return bestPiece, bestMove
+
     def evaluate_board(self, board):
         value = 0
         for row in range(rows):
@@ -363,6 +421,8 @@ class Minimax(Player):
         
         if maximizing:
             maxEval = -np.inf
+            bestPiece = None
+            bestMove = None
             for piece, moveto in self.get_all_moves(self.botTurn, board).items():
                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)
@@ -374,6 +434,8 @@ class Minimax(Player):
         
         else:
             minEval = np.inf
+            bestPiece = None
+            bestMove = None
             for piece, moveto in self.get_all_moves(self.oppTurn, board).items():
                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, True)
@@ -384,36 +446,55 @@ class Minimax(Player):
             return minEval, bestPiece, bestMove
 
     def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):
-        if depth == 0 or board.is_game_over():
-            return self.evaluate(board)
+        if depth == 0 or self.is_game_over(board):
+            return self.evaluate_board(board), None, None
         
         if maximizing:
             maxEval = -np.inf
-            for move in board.get_all_moves():
-                eval = self.minimaxAlphaBeta(move, depth-1, alpha, beta, False)
+            bestPiece = None
+            bestMove = None
+            for piece, moveto in self.get_all_moves(self.botTurn, board).items():
+                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                eval, _, _ = self.minimax(new_board, depth-1, False)
                 maxEval = max(maxEval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-            return maxEval
+                if maxEval == eval:
+                    bestPiece = piece
+                    bestMove = moveto
+            return maxEval, bestPiece, bestMove
         
         else:
             minEval = np.inf
-            for move in board.get_all_moves():
-                eval = self.minimaxAlphaBeta(move, depth-1, alpha, beta, True)
+            bestPiece = None
+            bestMove = None
+            for piece, moveto in self.get_all_moves(self.oppTurn, board).items():
+                new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                eval, _, _ = self.minimax(new_board, depth-1, True)
                 minEval = min(minEval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
-            return minEval
+                if minEval == eval:
+                    bestPiece = piece
+                    bestMove = moveto
+            return minEval, bestPiece, bestMove
+
     
     def get_all_moves(self, player, board):
         moves = {}
-        for row in range(rows):
-            for col in range(cols):
-                if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
-                    for move in self.get_valid_moves(row, col, board)[0]:
-                        moves[(row, col)] = move
+        mandatory_moves = self.get_mandatory_capture(player, board)
+        if mandatory_moves:
+            for piece in mandatory_moves:
+                for move in self.get_valid_moves(piece[0], piece[1], board)[0]:
+                    moves[tuple(piece)] = move
+        else:
+            for row in range(rows):
+                for col in range(cols):
+                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
+                        for move in self.get_valid_moves(row, col, board)[0]:
+                            moves[(row, col)] = move
         return moves
     
     def update_board(self, board, piece, move):

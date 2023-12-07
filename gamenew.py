@@ -38,7 +38,7 @@ class Checkers:
         running = True
         # player1 = User('b', self.board)
         # player2 = User('w', self.board)
-        player1 = Minimax('b', 3, self.board)
+        player1 = Minimax('b', 5, self.board)
         player2 = Minimax('w', 5, self.board)
         while running:
             self.screen.fill(BROWN)
@@ -362,11 +362,11 @@ class Player():
     def is_game_over(self, board):
         if self.countBlack(board) == 0 or self.countWhite(board) == 0:
             return True
-        for row in range(rows):
-            for col in range(cols):
-                if board[row][col].lower() == self.turn:
-                    if self.get_valid_moves(row, col, board)[0] is None:
-                        return True
+        # for row in range(rows):
+        #     for col in range(cols):
+        #         if board[row][col].lower() == self.turn:
+        #             if self.get_valid_moves(row, col, board)[0] is None:
+        #                 return True
         return False
 
 class User(Player):
@@ -406,13 +406,13 @@ class Minimax(Player):
         for row in range(rows):
             for col in range(cols):
                 if board[row][col] == 'b':
-                    value += 1
+                    value += 10
                 elif board[row][col] == 'w':
-                    value -= 1
+                    value -= 10
                 elif board[row][col] == 'B':
-                    value += 3
+                    value += 50
                 elif board[row][col] == 'W':
-                    value -= 3
+                    value -= 50
         return value
 
     def minimax(self, board, depth, maximizing):
@@ -423,7 +423,8 @@ class Minimax(Player):
             maxEval = -np.inf
             bestPiece = None
             bestMove = None
-            for piece, moveto in self.get_all_moves(self.botTurn, board).items():
+            movesdict = self.shuffle_dict(self.get_all_moves(self.botTurn, board))
+            for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)
                 maxEval = max(maxEval, eval)
@@ -436,7 +437,8 @@ class Minimax(Player):
             minEval = np.inf
             bestPiece = None
             bestMove = None
-            for piece, moveto in self.get_all_moves(self.oppTurn, board).items():
+            movesdict = self.shuffle_dict(self.get_all_moves(self.oppTurn, board))
+            for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, True)
                 minEval = min(minEval, eval)
@@ -453,9 +455,10 @@ class Minimax(Player):
             maxEval = -np.inf
             bestPiece = None
             bestMove = None
-            for piece, moveto in self.get_all_moves(self.botTurn, board).items():
+            movesdict = self.shuffle_dict(self.get_all_moves(self.botTurn, board))
+            for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.minimax(new_board, depth-1, False)
+                eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
                 maxEval = max(maxEval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -469,9 +472,10 @@ class Minimax(Player):
             minEval = np.inf
             bestPiece = None
             bestMove = None
-            for piece, moveto in self.get_all_moves(self.oppTurn, board).items():
+            movesdict = self.shuffle_dict(self.get_all_moves(self.oppTurn, board))
+            for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                eval, _, _ = self.minimax(new_board, depth-1, True)
+                eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
                 minEval = min(minEval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
@@ -508,6 +512,12 @@ class Minimax(Player):
         new_board, _ = self.move_piece(move, turn, new_board)
         self.init_variables()
         return new_board
+    
+    def shuffle_dict(self, dict):
+        keys = list(dict.keys())
+        np.random.shuffle(keys)
+        return {key: dict[key] for key in keys}
+
 
 def main():
     board = Checkers()

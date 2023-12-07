@@ -374,3 +374,12 @@ def testVar(a):
     newa = a
     newa += 1
     return newa
+
+def shuffle_dict(dict):
+    keys = list(dict.keys())
+    np.random.shuffle(keys)
+    return {key: dict[key] for key in keys}
+
+testdict = {(5, 4): [4, 5], (5, 6): [4, 5], (6, 1): [5, 2], (7, 2): [6, 3], (7, 4): [6, 3]}
+
+print(shuffle_dict(testdict))

@@ -3,9 +3,6 @@ from pygame.locals import *
 import numpy as np
 import copy
 
-#Check if using SSH
-# os.environ["SDL_VIDEODRIVER"] = "wayland"
-
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BROWN = (133, 84, 49)

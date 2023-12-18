@@ -3,6 +3,11 @@ from pygame.locals import *
 import numpy as np
 import copy
 
+# For recording resource usage
+import os
+import pandas as pd
+import psutil
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BROWN = (133, 84, 49)
@@ -32,67 +37,6 @@ class Checkers:
         else:
             self.board = board
         self.turn = turn # current turn
-    
-    ## Run game
-    def run(self):
-        running = True
-        # player1 = User('b', self.board)
-        # player2 = User('w', self.board)
-        player1 = Minimax('b', 5, self.board)
-        player2 = Minimax('w', 5, self.board)
-        while running:
-            self.screen.fill(BROWN)
-            self.draw_board()
-            self.draw_pieces()
-            self.debug_text()
-            pygame.display.flip()
-
-            if self.turn == 'b':
-                if player1.user:
-                    for event in pygame.event.get():
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            row, col = player1.get_mouse_pos()
-                            player1.handle_mouse_click(row, col)
-                else:
-                    print('minimax 1', self.turn)
-                    # bestPiece, bestMove = player1.playMM(self.board)
-                    bestPiece, bestMove = player1.playAB(self.board)
-                    if bestPiece is not None and bestMove is not None:
-                        self.board, self.turn = player1.update_board(self.board, bestPiece, bestMove)
-                        player1.turn = self.turn
-                        player2.turn = self.turn
-                    # self.turn = 'w'
-            elif self.turn == 'w':
-                if player2.user:
-                    for event in pygame.event.get():
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            row, col = player2.get_mouse_pos()
-                            player2.handle_mouse_click(row, col)
-                else:
-                    print('minimax 2', self.turn)
-                    # bestPiece, bestMove = player2.playMM(self.board)
-                    bestPiece, bestMove = player2.playAB(self.board)
-                    if bestPiece is not None and bestMove is not None:
-                        self.board, self.turn = player2.update_board(self.board, bestPiece, bestMove)
-                        player1.turn = self.turn
-                        player2.turn = self.turn
-                    # self.turn = 'b'
-
-            if self.is_game_over(self.board):
-                # running = False
-                if self.countBlack(self.board) == 0:
-                    print("White wins")
-                elif self.countWhite(self.board) == 0:
-                    print("Black wins")
-                else:
-                    print("Draw")
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    running = False
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                    print(self.turn, player1.user, player2.user)
-        pygame.quit()
     
     ## Draw board and pieces
     def draw_board(self):
@@ -146,44 +90,6 @@ class Checkers:
         #             if not self.check_valid_moves(row, col, self.turn, board):
         #                 return True
         return False
-    
-    # def check_valid_moves(self, row, col, turn, board):
-    #     capturePiece = 'w' if turn == 'b' else 'b'
-    #     if board[row][col].lower() == turn:
-    #         if board[row][col] == 'b':
-    #             if 0 <= row+1 <= 7 and 0 <= col-1 <= 7 and board[row+1][col-1] == '-':
-    #                 return True
-    #             if 0 <= row+1 <= 7 and 0 <= col+1 <= 7 and board[row+1][col+1] == '-':
-    #                 return True
-    #             if 0 <= row+2 <= 7 and 0 <= col-2 <= 7 and board[row+1][col-1].lower() == capturePiece and board[row+2][col-2] == '-':
-    #                 return True
-    #             if 0 <= row+2 <= 7 and 0 <= col+2 <= 7 and board[row+1][col+1].lower() == capturePiece and board[row+2][col+2] == '-':
-    #                 return True
-
-    #         elif board[row][col] == 'w':
-    #             if 0 <= row-1 <= 7 and 0 <= col-1 <= 7 and board[row-1][col-1] == '-':
-    #                 return True
-    #             if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':
-    #                 return True
-    #             if 0 <= row-2 <= 7 and 0 <= col-2 <= 7 and board[row-1][col-1].lower() == capturePiece and board[row-2][col-2] == '-':
-    #                 return True
-    #             if 0 <= row-2 <= 7 and 0 <= col+2 <= 7 and board[row-1][col+1].lower() == capturePiece and board[row-2][col+2] == '-':
-    #                 return True
-
-    #         elif board[row][col] == 'B' or board[row][col] == 'W':
-    #             directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-    #             for direction in directions:
-    #                 for i in range(1, 8):
-    #                     checkrow = row + direction[0] * i
-    #                     checkcol = col + direction[1] * i
-    #                     if 0 <= checkrow <= 7 and 0 <= checkcol <= 7:
-    #                         if board[checkrow][checkcol] == '-':
-    #                             return True
-    #                         else:
-    #                             break
-    #                     else:
-    #                         break
-    #     return False
 
 class Player():
     def __init__(self, turn, board):
@@ -521,7 +427,144 @@ class Minimax(Player):
 
 def main():
     board = Checkers()
-    board.run()
+    running = True
+    nummoves = 0
+    loops = 50
+    # player1 = User('b', self.board)
+    # player2 = User('w', self.board)
+    player1 = Minimax('b', 5, board.board)
+    player2 = Minimax('w', 5, board.board)
+    for loop in range(loops):
+        board.screen.fill(BROWN)
+        board.draw_board()
+        board.draw_pieces()
+        board.debug_text()
+        pygame.display.flip()
+
+        if board.turn == 'b':
+            if player1.user:
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        row, col = player1.get_mouse_pos()
+                        player1.handle_mouse_click(row, col)
+            else:
+                print('minimax 1', board.turn)
+                # bestPiece, bestMove = player1.playMM(self.board)
+                bestPiece, bestMove = player1.playAB(board.board)
+                if bestPiece is not None and bestMove is not None:
+                    board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
+                    player1.turn = board.turn
+                    player2.turn = board.turn
+                # self.turn = 'w'
+            nummoves += 1
+            writeData(nummoves, nummoves, 'resource_usage.csv')
+            
+        elif board.turn == 'w':
+            if player2.user:
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        row, col = player2.get_mouse_pos()
+                        player2.handle_mouse_click(row, col)
+            else:
+                print('minimax 2', board.turn)
+                # bestPiece, bestMove = player2.playMM(self.board)
+                bestPiece, bestMove = player2.playAB(board.board)
+                if bestPiece is not None and bestMove is not None:
+                    board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)
+                    player1.turn = board.turn
+                    player2.turn = board.turn
+                # self.turn = 'b'
+            nummoves += 1        
+            
+        isGameOver = is_game_over(board.board, board.turn)
+        if isGameOver:
+            # running = False
+            if countBlack(board.board) == 0:
+                print("White wins")
+                winnerData('White')
+            elif countWhite(board.board) == 0:
+                print("Black wins")
+                winnerData('Black')
+            else:
+                print("Draw")
+
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+        #         running = False
+        #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        #         print(self.turn, player1.user, player2.user)
+    pygame.quit()
+
+def winnerData(winner, filename='winner.csv'):
+    if os.path.isfile(filename):
+        df = pd.read_csv(filename)
+    else:
+        df = pd.DataFrame(columns=['Game', 'Winner'])
+    df = df.append({'Winner': winner}, ignore_index=True)
+    df.to_csv(filename, index=False)
+
+def writeData(loopcount, nummoves, filename='resource_usage.csv'):
+    if os.path.isfile(filename):
+        df = pd.read_csv(filename)
+    else:
+        df = pd.DataFrame(columns=['CPU', 'RAM', 'Moves', 'Loop'])
+    # df = df.append({'CPU': psutil.cpu_percent(), 'RAM': psutil.virtual_memory()[3]/1e+9, 'Moves': nummoves, 'Loop': loopcount}, ignore_index=True)
+    pd.concat([df, pd.DataFrame([[psutil.cpu_percent(), psutil.virtual_memory()[3]/1e+9, nummoves, loopcount]], columns=['CPU', 'RAM', 'Moves', 'Loop'])]).to_csv(filename, index=False)
+
+def countBlack(board):
+    count = 0
+    for row in range(rows):
+        for col in range(cols):
+            if board[row][col] == 'b' or board[row][col] == 'B':
+                count += 1
+    return count
+
+def countWhite(board):
+    count = 0
+    for row in range(rows):
+        for col in range(cols):
+            if board[row][col] == 'w' or board[row][col] == 'W':
+                count += 1
+    return count
+
+def is_game_over(board, turn):
+    if countBlack(board) == 0 or countWhite(board) == 0:
+        return True
+    for row in range(rows):
+        for col in range(cols):
+            if board[row][col].lower() == turn:
+                if basic_valid_moves(row, col, board) is None:
+                    return True
+    return False
+
+def basic_valid_moves(row, col, board):
+    moves = []
+    if board[row][col] == 'b':
+        if 0 <= row+1 <= 7 and 0 <= col-1 <= 7 and board[row+1][col-1] == '-':
+            moves.append([row+1, col-1])
+        if 0 <= row+1 <= 7 and 0 <= col+1 <= 7 and board[row+1][col+1] == '-':
+            moves.append([row+1, col+1])
+
+    elif board[row][col] == 'w':
+        if 0 <= row-1 <= 7 and 0 <= col-1 <= 7 and board[row-1][col-1] == '-':
+            moves.append([row-1, col-1])
+        if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':
+            moves.append([row-1, col+1])
+
+    elif board[row][col] == 'B' or board[row][col] == 'W':
+        directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+        for direction in directions:
+            for i in range(1, 8):
+                checkrow = row + direction[0] * i
+                checkcol = col + direction[1] * i
+                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7:
+                    if board[checkrow][checkcol] == '-':
+                        moves.append([checkrow, checkcol])
+                    else:
+                        break
+                else:
+                    break                            
+    return moves if moves else None
 
 if __name__ == '__main__':
     main()

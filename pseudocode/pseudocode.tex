@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\begin{document}
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\SetKwFunction{Minimax}{Minimax}
+\SetKwProg{Fn}{Function}{:}{}
+
+% % \Input{game state $state$, depth $depth$, maximizing player $maxPlayer$}
+% % \Output{best score}
+
+\Fn{\Minimax{$state$, $depth$, $maxPlayer$}}{
+    \If{$depth = 0$ or game is over}{
+        \Return{evaluate($state$)}
+    }
+    
+    \If{$maxPlayer$}{
+        $bestScore \gets -\infty$\;
+        \ForEach{possible move $move$ in $state$}{
+            $score \gets$ \Minimax{makeMove($state$, $move$), $depth - 1$, \textbf{false}}\;
+            $bestScore \gets \max(bestScore, score)$\;
+        }
+        \Return{$bestScore$}\;
+    }
+    \Else{
+        $bestScore \gets \infty$\;
+        \ForEach{possible move $move$ in $state$}{
+            $score \gets$ \Minimax{makeMove($state$, $move$), $depth - 1$, \textbf{true}}\;
+            $bestScore \gets \min(bestScore, score)$\;
+        }
+        \Return{$bestScore$}\;
+    }
+}
+
+\caption{Minimax Algorithm}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\SetKwFunction{AlphaBeta}{AlphaBetaPruning}
+\SetKwProg{Fn}{Function}{:}{}
+
+\Fn{\AlphaBeta{$state$, $depth$, $\alpha$, $\beta$, $maxPlayer$}}{
+    \If{$depth = 0$ or game is over}{
+        \Return{evaluate($state$)}
+    }
+    
+    \If{$maxPlayer$}{
+        $bestScore \gets -\infty$\;
+        \ForEach{possible move $move$ in $state$}{
+            $score \gets$ \AlphaBeta{makeMove($state$, $move$), $depth - 1$, $\alpha$, $\beta$, \textbf{false}}\;
+            $bestScore \gets \max(bestScore, score)$\;
+            $\alpha \gets \max(\alpha, score)$\;
+            \If{$\beta \leq \alpha$}{
+                break\;
+            }
+        }
+        \Return{$bestScore$}\;
+    }
+    \Else{
+        $bestScore \gets \infty$\;
+        \ForEach{possible move $move$ in $state$}{
+            $score \gets$ \AlphaBeta{makeMove($state$, $move$), $depth - 1$, $\alpha$, $\beta$, \textbf{true}}\;
+            $bestScore \gets \min(bestScore, score)$\;
+            $\beta \gets \min(\beta, score)$\;
+            \If{$\beta \leq \alpha$}{
+                break\;
+            }
+        }
+        \Return{$bestScore$}\;
+    }
+}
+\caption{Minimax Algorithm with Alpha-Beta Pruning}
+\end{algorithm}
+
+\end{document}

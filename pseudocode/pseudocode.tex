@@ -9,28 +9,28 @@
 \SetKwProg{Fn}{Function}{:}{}
 
 % % \Input{game state $state$, depth $depth$, maximizing player $maxPlayer$}
-% % \Output{best score}
+% % \Output{best value}
 
-\Fn{\Minimax{$state$, $depth$, $maxPlayer$}}{
+\Fn{\Minimax{$state$, $depth$, $maximizing$ = \textbf{true}}}{
     \If{$depth = 0$ or game is over}{
         \Return{evaluate($state$)}
     }
     
-    \If{$maxPlayer$}{
-        $bestScore \gets -\infty$\;
-        \ForEach{possible move $move$ in $state$}{
-            $score \gets$ \Minimax{makeMove($state$, $move$), $depth - 1$, \textbf{false}}\;
-            $bestScore \gets \max(bestScore, score)$\;
+    \If{$maximizing$ = \textbf{true}}{
+        $bestValue \gets -\infty$\;
+        \For{\textbf{each} child \textbf{in} $state$}{
+            $value \gets$ \Minimax{child, $depth - 1$, \textbf{false}}\;
+            $bestValue \gets \max(bestValue, value)$\;
         }
-        \Return{$bestScore$}\;
+        \Return{$bestValue$}\;
     }
     \Else{
-        $bestScore \gets \infty$\;
-        \ForEach{possible move $move$ in $state$}{
-            $score \gets$ \Minimax{makeMove($state$, $move$), $depth - 1$, \textbf{true}}\;
-            $bestScore \gets \min(bestScore, score)$\;
+        $bestValue \gets \infty$\;
+        \For{\textbf{each} child \textbf{in} $state$}{
+            $value \gets$ \Minimax{child, $depth - 1$, \textbf{true}}\;
+            $bestValue \gets \min(bestValue, value)$\;
         }
-        \Return{$bestScore$}\;
+        \Return{$bestValue$}\;
     }
 }
 
@@ -39,37 +39,37 @@
 
 \begin{algorithm}[H]
 \SetAlgoLined
-\SetKwFunction{AlphaBeta}{AlphaBetaPruning}
+\SetKwFunction{AlphaBeta}{AlphaBeta}
 \SetKwProg{Fn}{Function}{:}{}
 
-\Fn{\AlphaBeta{$state$, $depth$, $\alpha$, $\beta$, $maxPlayer$}}{
+\Fn{\AlphaBeta{$state$, $depth$, $\alpha$, $\beta$, $maximizing$ = \textbf{true}}}{
     \If{$depth = 0$ or game is over}{
         \Return{evaluate($state$)}
     }
     
-    \If{$maxPlayer$}{
-        $bestScore \gets -\infty$\;
-        \ForEach{possible move $move$ in $state$}{
-            $score \gets$ \AlphaBeta{makeMove($state$, $move$), $depth - 1$, $\alpha$, $\beta$, \textbf{false}}\;
-            $bestScore \gets \max(bestScore, score)$\;
-            $\alpha \gets \max(\alpha, score)$\;
+    \If{$maximizing$ = \textbf{true}}{
+        $bestValue \gets -\infty$\;
+        \For{\textbf{each} child \textbf{in} $state$}{
+            $value \gets$ \AlphaBeta{child, $depth - 1$, $\alpha$, $\beta$, \textbf{false}}\;
+            $bestValue \gets \max(bestValue, value)$\;
+            $\alpha \gets \max(\alpha, value)$\;
             \If{$\beta \leq \alpha$}{
                 break\;
             }
         }
-        \Return{$bestScore$}\;
+        \Return{$bestValue$}\;
     }
     \Else{
-        $bestScore \gets \infty$\;
-        \ForEach{possible move $move$ in $state$}{
-            $score \gets$ \AlphaBeta{makeMove($state$, $move$), $depth - 1$, $\alpha$, $\beta$, \textbf{true}}\;
-            $bestScore \gets \min(bestScore, score)$\;
-            $\beta \gets \min(\beta, score)$\;
+        $bestValue \gets \infty$\;
+        \For{\textbf{each} child \textbf{in} $state$}{
+            $value \gets$ \AlphaBeta{child, $depth - 1$, $\alpha$, $\beta$, \textbf{true}}\;
+            $bestValue \gets \min(bestValue, value)$\;
+            $\beta \gets \min(\beta, value)$\;
             \If{$\beta \leq \alpha$}{
                 break\;
             }
         }
-        \Return{$bestScore$}\;
+        \Return{$bestValue$}\;
     }
 }
 \caption{Minimax Algorithm with Alpha-Beta Pruning}

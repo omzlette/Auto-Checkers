@@ -383,3 +383,28 @@ def shuffle_dict(dict):
 testdict = {(5, 4): [4, 5], (5, 6): [4, 5], (6, 1): [5, 2], (7, 2): [6, 3], (7, 4): [6, 3]}
 
 print(shuffle_dict(testdict))
+
+from jtop import jtop
+
+# def read_stats(jetson):
+#     print(jetson.stats['GPU'])
+
+with jtop() as jetson:
+    print(jetson.stats)
+
+newboard = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
+            ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
+            ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+
+x = np.char.upper(np.array(newboard)) == 'B'
+
+print(newboard)
+print(list(zip(*np.where(x))))
+print(np.asarray(np.where(x)).T.tolist())
+
+print(all(not i for i in [True, True]))

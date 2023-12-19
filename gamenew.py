@@ -387,7 +387,7 @@ def main():
     #     time.sleep(2)
     
     loops = 10
-    for depth1 in range(1, 6):
+    for depth1 in range(2, 6):
         for depth2 in range(1, 6):
             for loop in range(loops):
                 board = Checkers()
@@ -448,9 +448,21 @@ def main():
                     
                     # writeData(loop, nummoves, 'data/resource_usage.csv')
 
-                    # for event in pygame.event.get():
-                    #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    #         running = False
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                            running = False
+                            if countBlack(board.board) > countWhite(board.board):
+                                print('Game Over, Winner: Black', 'Game No.:', loop)
+                                winnerData(loop, 'b', f'data/winner_experiment_{depth1}_{depth2}.csv')
+                            elif countBlack(board.board) < countWhite(board.board):
+                                print('Game Over, Winner: White', 'Game No.:', loop)
+                                winnerData(loop, 'w', f'data/winner_experiment_{depth1}_{depth2}.csv')
+                            else:
+                                running = True
+                                player1 = Minimax('b', depth1, board.board)
+                                player2 = Minimax('w', depth2, board.board)
+                                board = Checkers()
+                                nummoves = 0
                     #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     #         print(self.turn, player1.user, player2.user)
                 pygame.quit()
@@ -487,25 +499,23 @@ def countWhite(board):
     return count
 
 def is_game_over(board):
-    temp = []
-    if countBlack(board) <= 2:
-        x = np.char.lower(np.array(board)) == 'b'
-        pieceloclist = np.asarray(np.where(x)).T.tolist()
-        for pieceloc in pieceloclist:
-            temp.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
-        if all(not i for i in temp):
-            return 'w'
-    elif countWhite(board) <= 2:
-        x = np.char.lower(np.array(board)) == 'w'
-        pieceloclist = np.asarray(np.where(x)).T.tolist()
-        for pieceloc in pieceloclist:
-            temp.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
-        if all(not i for i in temp):
-            return 'b'
-    elif countBlack(board) == 0:
+    tempb = []
+
+    xb = np.char.lower(np.array(board)) == 'b'
+    pieceloclist = np.asarray(np.where(xb)).T.tolist()
+    for pieceloc in pieceloclist:
+        tempb.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+    if all(not i for i in tempb) or countBlack(board) == 0:
         return 'w'
-    elif countWhite(board) == 0:
+
+    tempw = []
+    xw = np.char.lower(np.array(board)) == 'w'
+    pieceloclist = np.asarray(np.where(xw)).T.tolist()
+    for pieceloc in pieceloclist:
+        tempw.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+    if all(not i for i in tempw) or countWhite(board) == 0:
         return 'b'
+    
     return False
 
 def check_basic_valid_moves(row, col, board):

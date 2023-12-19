@@ -395,34 +395,37 @@ def main():
     #     writeData(None, None, 'data/idle_resource.csv')
     #     time.sleep(2)
     
-    loops = 10
-    for depth1 in range(1, 6):
-        for depth2 in range(1, 6):
-            for loop in range(loops):
-                board = Checkers()
-                running = True  
-                nummoves = 0
-                # player1 = User('b', board.board)
-                # player2 = User('w', board.board)
-                # player1 = randomBot('b', board.board)
-                # player2 = randomBot('w', board.board)
-                player1 = Minimax('b', depth1, board.board)
-                player2 = Minimax('w', depth2, board.board)
-                
-                while running:
-                    isGameOver = is_game_over(board.board)
-                    if isGameOver in ['b', 'w']:
-                        print(countBlack(board.board), countWhite(board.board))
-                        running = False
-                        print('Game Over, Winner: ', isGameOver, 'Game No.:', loop)
-                        winnerData(loop, isGameOver, f'data/winner_experiment_{depth1}_{depth2}.csv')
+    loops = 20
+    # for depth1 in range(1, 6):
+    for depth2 in range(1, 6):
+        for loop in range(loops):
+            filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
 
-                    board.screen.fill(BROWN)
-                    board.draw_board()
-                    board.draw_pieces()
-                    board.debug_text()
-                    pygame.display.flip()
+            board = Checkers()
+            running = True  
+            nummoves = 0
+            # player1 = User('b', board.board)
+            # player2 = User('w', board.board)
+            player1 = randomBot('b', board.board)
+            # player2 = randomBot('w', board.board)
+            # player1 = Minimax('b', depth1, board.board)
+            player2 = Minimax('w', depth2, board.board)
+            
+            while running:
+                isGameOver = is_game_over(board.board)
+                if isGameOver in ['b', 'w']:
+                    print(countBlack(board.board), countWhite(board.board))
+                    running = False
+                    print('Game Over, Winner: ', isGameOver, 'Game No.:', loop)
+                    winnerData(loop, isGameOver, filename)
 
+                board.screen.fill(BROWN)
+                board.draw_board()
+                board.draw_pieces()
+                board.debug_text()
+                pygame.display.flip()
+
+                if not isGameOver:
                     if board.turn == 'b':
                         if player1.user:
                             for event in pygame.event.get():
@@ -430,8 +433,9 @@ def main():
                                     row, col = player1.get_mouse_pos()
                                     player1.handle_mouse_click(row, col)
                         else:
+                            bestPiece, bestMove = player1.playRandom(board.board)
                             # bestPiece, bestMove = player1.playMM(board.board)
-                            bestPiece, bestMove = player1.playAB(board.board)
+                            # bestPiece, bestMove = player1.playAB(board.board)
                             if bestPiece is not None and bestMove is not None:
                                 board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
                                 player1.turn = board.turn
@@ -446,35 +450,35 @@ def main():
                                     row, col = player2.get_mouse_pos()
                                     player2.handle_mouse_click(row, col)
                         else:
-                            # bestPiece, bestMove = player2.playMM(board.board)
-                            bestPiece, bestMove = player2.playAB(board.board)
+                            bestPiece, bestMove = player2.playMM(board.board)
+                            # bestPiece, bestMove = player2.playAB(board.board)
                             if bestPiece is not None and bestMove is not None:
                                 board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
                             # self.turn = 'b'
                         nummoves += 1        
-                    
-                    # writeData(loop, nummoves, 'data/resource_usage.csv')
+                
+                # writeData(loop, nummoves, 'data/resource_usage.csv')
 
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                            running = False
-                            if countBlack(board.board) > countWhite(board.board):
-                                print('Game Over, Winner: Black', 'Game No.:', loop)
-                                winnerData(loop, 'b', f'data/winner_experiment_{depth1}_{depth2}.csv')
-                            elif countBlack(board.board) < countWhite(board.board):
-                                print('Game Over, Winner: White', 'Game No.:', loop)
-                                winnerData(loop, 'w', f'data/winner_experiment_{depth1}_{depth2}.csv')
-                            else:
-                                running = True
-                                player1 = Minimax('b', depth1, board.board)
-                                player2 = Minimax('w', depth2, board.board)
-                                board = Checkers()
-                                nummoves = 0
-                    #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                    #         print(self.turn, player1.user, player2.user)
-                pygame.quit()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                        running = False
+                        if countBlack(board.board) > countWhite(board.board):
+                            print('Game Over, Winner: Black', 'Game No.:', loop)
+                            winnerData(loop, 'b', filename)
+                        elif countBlack(board.board) < countWhite(board.board):
+                            print('Game Over, Winner: White', 'Game No.:', loop)
+                            winnerData(loop, 'w', filename)
+                        # else:
+                        #     running = True
+                        #     player1 = Minimax('b', depth1, board.board)
+                        #     player2 = Minimax('w', depth2, board.board)
+                        #     board = Checkers()
+                        #     nummoves = 0
+                #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                #         print(self.turn, player1.user, player2.user)
+            pygame.quit()
 
 def winnerData(loop, winner, filename='winner.csv'):
     if os.path.isfile(filename):

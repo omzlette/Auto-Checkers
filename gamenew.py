@@ -224,6 +224,56 @@ class Player():
                 self.selectedPiece = None
                 self.validMoves = None
         return board, turn
+    
+    def get_all_moves(self, player, board):
+        moves = {}
+        mandatory_moves = self.get_mandatory_capture(player, board)
+        if mandatory_moves:
+            for piece in mandatory_moves:
+                for move in self.get_valid_moves(piece[0], piece[1], board)[0]:
+                    moves[tuple(piece)] = move
+        else:
+            for row in range(rows):
+                for col in range(cols):
+                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
+                        for move in self.get_valid_moves(row, col, board)[0]:
+                            moves[(row, col)] = move
+        return moves
+    
+    def update_board(self, board, piece, move):
+        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
+        board, turn = self.move_piece(move, self.turn, board)
+        return board, turn
+
+    def simulate_game(self, piece, move, turn, board):
+        new_board = copy.deepcopy(board)
+        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
+        new_board, _ = self.move_piece(move, turn, new_board)
+        self.init_variables()
+        return new_board
+    
+    def shuffle_dict(self, dict):
+        keys = list(dict.keys())
+        np.random.shuffle(keys)
+        return {key: dict[key] for key in keys}
+    
+    def evaluate_board(self, board):
+        value = 0
+        for row in range(rows):
+            for col in range(cols):
+                if board[row][col] == self.botTurn:
+                    value += 5
+                elif board[row][col] == self.oppTurn:
+                    value -= 5
+                elif board[row][col] == self.botTurn.upper():
+                    value += 50
+                elif board[row][col] == self.oppTurn.upper():
+                    value -= 50
+        if is_game_over(board) == self.botTurn:
+            value += 500
+        elif is_game_over(board) == self.oppTurn:
+            value -= 500
+        return value
 
 class User(Player):
     def __init__(self, turn, board):
@@ -256,24 +306,6 @@ class Minimax(Player):
     def playAB(self, board):
         _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
         return bestPiece, bestMove
-
-    def evaluate_board(self, board):
-        value = 0
-        for row in range(rows):
-            for col in range(cols):
-                if board[row][col] == self.botTurn:
-                    value += 5
-                elif board[row][col] == self.oppTurn:
-                    value -= 5
-                elif board[row][col] == self.botTurn.upper():
-                    value += 50
-                elif board[row][col] == self.oppTurn.upper():
-                    value -= 50
-        if is_game_over(board) == self.botTurn:
-            value += 500
-        elif is_game_over(board) == self.oppTurn:
-            value -= 500
-        return value
 
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board) in ['w', 'b']:
@@ -345,39 +377,16 @@ class Minimax(Player):
                     bestMove = moveto
             return minEval, bestPiece, bestMove
 
-    
-    def get_all_moves(self, player, board):
-        moves = {}
-        mandatory_moves = self.get_mandatory_capture(player, board)
-        if mandatory_moves:
-            for piece in mandatory_moves:
-                for move in self.get_valid_moves(piece[0], piece[1], board)[0]:
-                    moves[tuple(piece)] = move
-        else:
-            for row in range(rows):
-                for col in range(cols):
-                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
-                        for move in self.get_valid_moves(row, col, board)[0]:
-                            moves[(row, col)] = move
-        return moves
-    
-    def update_board(self, board, piece, move):
-        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
-        board, turn = self.move_piece(move, self.turn, board)
-        return board, turn
+class randomBot(Player):
+    def __init__(self, turn, board):
+        super().__init__(turn, board)
+        self.user = False
 
-    def simulate_game(self, piece, move, turn, board):
-        new_board = copy.deepcopy(board)
-        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
-        new_board, _ = self.move_piece(move, turn, new_board)
-        self.init_variables()
-        return new_board
-    
-    def shuffle_dict(self, dict):
-        keys = list(dict.keys())
-        np.random.shuffle(keys)
-        return {key: dict[key] for key in keys}
-
+    def playRandom(self, board):
+        movesdict = self.shuffle_dict(self.get_all_moves(self.turn, board))
+        piece = list(movesdict.keys())[0]
+        moveto = movesdict[piece]
+        return piece, moveto
 
 def main():
     # time.sleep(10)
@@ -393,8 +402,10 @@ def main():
                 board = Checkers()
                 running = True  
                 nummoves = 0
-                # player1 = User('b', self.board)
-                # player2 = User('w', self.board)
+                # player1 = User('b', board.board)
+                # player2 = User('w', board.board)
+                # player1 = randomBot('b', board.board)
+                # player2 = randomBot('w', board.board)
                 player1 = Minimax('b', depth1, board.board)
                 player2 = Minimax('w', depth2, board.board)
                 
@@ -419,9 +430,8 @@ def main():
                                     row, col = player1.get_mouse_pos()
                                     player1.handle_mouse_click(row, col)
                         else:
-                            # print('minimax 1', board.turn)
-                            bestPiece, bestMove = player1.playMM(board.board)
-                            # bestPiece, bestMove = player1.playAB(board.board)
+                            # bestPiece, bestMove = player1.playMM(board.board)
+                            bestPiece, bestMove = player1.playAB(board.board)
                             if bestPiece is not None and bestMove is not None:
                                 board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
                                 player1.turn = board.turn
@@ -436,9 +446,8 @@ def main():
                                     row, col = player2.get_mouse_pos()
                                     player2.handle_mouse_click(row, col)
                         else:
-                            # print('minimax 2', board.turn)
-                            bestPiece, bestMove = player2.playMM(board.board)
-                            # bestPiece, bestMove = player2.playAB(board.board)
+                            # bestPiece, bestMove = player2.playMM(board.board)
+                            bestPiece, bestMove = player2.playAB(board.board)
                             if bestPiece is not None and bestMove is not None:
                                 board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)
                                 player1.turn = board.turn
@@ -448,9 +457,21 @@ def main():
                     
                     # writeData(loop, nummoves, 'data/resource_usage.csv')
 
-                    # for event in pygame.event.get():
-                    #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    #         running = False
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                            running = False
+                            if countBlack(board.board) > countWhite(board.board):
+                                print('Game Over, Winner: Black', 'Game No.:', loop)
+                                winnerData(loop, 'b', f'data/winner_experiment_{depth1}_{depth2}.csv')
+                            elif countBlack(board.board) < countWhite(board.board):
+                                print('Game Over, Winner: White', 'Game No.:', loop)
+                                winnerData(loop, 'w', f'data/winner_experiment_{depth1}_{depth2}.csv')
+                            else:
+                                running = True
+                                player1 = Minimax('b', depth1, board.board)
+                                player2 = Minimax('w', depth2, board.board)
+                                board = Checkers()
+                                nummoves = 0
                     #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     #         print(self.turn, player1.user, player2.user)
                 pygame.quit()
@@ -487,25 +508,23 @@ def countWhite(board):
     return count
 
 def is_game_over(board):
-    temp = []
-    if countBlack(board) <= 2:
-        x = np.char.lower(np.array(board)) == 'b'
-        pieceloclist = np.asarray(np.where(x)).T.tolist()
-        for pieceloc in pieceloclist:
-            temp.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
-        if all(not i for i in temp):
-            return 'w'
-    elif countWhite(board) <= 2:
-        x = np.char.lower(np.array(board)) == 'w'
-        pieceloclist = np.asarray(np.where(x)).T.tolist()
-        for pieceloc in pieceloclist:
-            temp.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
-        if all(not i for i in temp):
-            return 'b'
-    elif countBlack(board) == 0:
+    tempb = []
+
+    xb = np.char.lower(np.array(board)) == 'b'
+    pieceloclist = np.asarray(np.where(xb)).T.tolist()
+    for pieceloc in pieceloclist:
+        tempb.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+    if all(not i for i in tempb) or countBlack(board) == 0:
         return 'w'
-    elif countWhite(board) == 0:
+
+    tempw = []
+    xw = np.char.lower(np.array(board)) == 'w'
+    pieceloclist = np.asarray(np.where(xw)).T.tolist()
+    for pieceloc in pieceloclist:
+        tempw.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+    if all(not i for i in tempw) or countWhite(board) == 0:
         return 'b'
+    
     return False
 
 def check_basic_valid_moves(row, col, board):

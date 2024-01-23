@@ -257,92 +257,92 @@ class Player():
         np.random.shuffle(keys)
         return {key: dict[key] for key in keys}
     
-def evaluate_board(self, board):
-    # piece counting
-    value = 0
-    for row in range(rows):
-        for col in range(cols):
-            # No. of pieces (each piece = +1 point)
-            if board[row][col] == self.botTurn:
-                value += 1
-            elif board[row][col] == self.oppTurn:
-                value -= 1
-            # No. of kings (each king = +5 points)
-            if board[row][col] == self.botTurn.upper():
-                value += 5
-            elif board[row][col] == self.oppTurn.upper():
-                value -= 5
-            ### METHOD 1 ###
-            # Each line (Men)
-            if board[row][col] == self.botTurn:
-                if row < 3:
-                    value += row
-                else:
-                    value += 3
-                # Crossed middle line (col)
-                if col == 0 or col == 7:
+    def evaluate_board(self, board):
+        # piece counting
+        value = 0
+        for row in range(rows):
+            for col in range(cols):
+                # No. of pieces (each piece = +1 point)
+                if board[row][col] == self.botTurn:
                     value += 1
-                else:
-                    value += 2
-            elif board[row][col] == self.oppTurn:
-                if (7 - row) < 3:
-                    value -= (7 - row)
-                else:
-                    value -= 3
-                # Crossed middle line (col)
-                if col == 0 or col == 7:
+                elif board[row][col] == self.oppTurn:
                     value -= 1
-                else:
-                    value -= 2
-            ### METHOD 2 ###
-            # Each line (Men)
-            # if board[row][col] == self.botTurn:
-            #     if row == 0:
-            #         value += 2
-            #     elif row == 1 and (col == 0 or col == 7):
-            #         value += 1
-            #     else:
-            #         value += 3
-            # elif board[row][col] == self.oppTurn:
-            #     if row == 7:
-            #         value -= 2
-            #     elif row == 6 and (col == 0 or col == 7):
-            #         value -= 1
-            #     else:
-            #         value -= 3
-            
-            # King's position (Kings)
-            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-            if board[row][col] == self.botTurn.upper():
-                for delta_row, delta_col in directions:
-                    capture_row, capture_col = row + delta_row, col + delta_col
-                    descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                    while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                        if board[capture_row][capture_col] == self.oppTurn:
-                            if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                value += 1
-                        capture_row += delta_row
-                        capture_col += delta_col
-                        descent_diag_row += delta_row
-                        descent_diag_col += delta_col
-            elif board[row][col] == self.oppTurn.upper():
-                for delta_row, delta_col in directions:
-                    capture_row, capture_col = row + delta_row, col + delta_col
-                    descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                    while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                        if board[capture_row][capture_col] == self.botTurn:
-                            if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                value -= 1
-                        capture_row += delta_row
-                        capture_col += delta_col
-                        descent_diag_row += delta_row
-                        descent_diag_col += delta_col
+                # No. of kings (each king = +5 points)
+                if board[row][col] == self.botTurn.upper():
+                    value += 5
+                elif board[row][col] == self.oppTurn.upper():
+                    value -= 5
+                ### METHOD 1 ###
+                # Each line (Men)
+                if board[row][col] == self.botTurn:
+                    if row < 3:
+                        value += row
+                    else:
+                        value += 3
+                    # Crossed middle line (col)
+                    if col == 0 or col == 7:
+                        value += 1
+                    else:
+                        value += 2
+                elif board[row][col] == self.oppTurn:
+                    if (7 - row) < 3:
+                        value -= (7 - row)
+                    else:
+                        value -= 3
+                    # Crossed middle line (col)
+                    if col == 0 or col == 7:
+                        value -= 1
+                    else:
+                        value -= 2
+                ### METHOD 2 ###
+                # Each line (Men)
+                # if board[row][col] == self.botTurn:
+                #     if row == 0:
+                #         value += 2
+                #     elif row == 1 and (col == 0 or col == 7):
+                #         value += 1
+                #     else:
+                #         value += 3
+                # elif board[row][col] == self.oppTurn:
+                #     if row == 7:
+                #         value -= 2
+                #     elif row == 6 and (col == 0 or col == 7):
+                #         value -= 1
+                #     else:
+                #         value -= 3
                 
-    if is_game_over(board) == self.botTurn:
-        value += 100
-    elif is_game_over(board) == self.oppTurn:
-        value -= 100
-    return value
+                # King's position (Kings)
+                directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+                if board[row][col] == self.botTurn.upper():
+                    for delta_row, delta_col in directions:
+                        capture_row, capture_col = row + delta_row, col + delta_col
+                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                            if board[capture_row][capture_col] == self.oppTurn:
+                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                                    value += 1
+                            capture_row += delta_row
+                            capture_col += delta_col
+                            descent_diag_row += delta_row
+                            descent_diag_col += delta_col
+                elif board[row][col] == self.oppTurn.upper():
+                    for delta_row, delta_col in directions:
+                        capture_row, capture_col = row + delta_row, col + delta_col
+                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                            if board[capture_row][capture_col] == self.botTurn:
+                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                                    value -= 1
+                            capture_row += delta_row
+                            capture_col += delta_col
+                            descent_diag_row += delta_row
+                            descent_diag_col += delta_col
+                    
+        if is_game_over(board) == self.botTurn:
+            value += 100
+        elif is_game_over(board) == self.oppTurn:
+            value -= 100
+        return value
 
 class User(Player):
     def __init__(self, turn, board):

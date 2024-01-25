@@ -92,7 +92,7 @@ class Player():
         else:
             if board[row][col].lower() == 'b':
                 if turn == 'b':
-                    selectedPiece = (row, col)
+                    selectedPiece = [row, col]
                     validMoves, capturePos = self.get_valid_moves(row, col, board)
                 else:
                     print("Not your turn (White turn)")
@@ -277,23 +277,16 @@ class Player():
                 if board[row][col] == self.botTurn:
                     if row < 3:
                         value += row
+                    elif row == 0:
+                        value += 2
                     else:
                         value += 3
                     # Crossed middle line (col)
-                    if col == 0 or col == 7:
+                    if (row > 3) and (col == 0 or col == 7):
                         value += 1
-                    else:
+                    elif (row > 3) and (col != 0 or col != 7):
                         value += 2
-                elif board[row][col] == self.oppTurn:
-                    if (7 - row) < 3:
-                        value -= (7 - row)
-                    else:
-                        value -= 3
-                    # Crossed middle line (col)
-                    if col == 0 or col == 7:
-                        value -= 1
-                    else:
-                        value -= 2
+
                 ### METHOD 2 ###
                 # Each line (Men)
                 # if board[row][col] == self.botTurn:
@@ -303,13 +296,6 @@ class Player():
                 #         value += 1
                 #     else:
                 #         value += 3
-                # elif board[row][col] == self.oppTurn:
-                #     if row == 7:
-                #         value -= 2
-                #     elif row == 6 and (col == 0 or col == 7):
-                #         value -= 1
-                #     else:
-                #         value -= 3
                 
                 # King's position (Kings)
                 directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
@@ -325,23 +311,10 @@ class Player():
                             capture_col += delta_col
                             descent_diag_row += delta_row
                             descent_diag_col += delta_col
-                elif board[row][col] == self.oppTurn.upper():
-                    for delta_row, delta_col in directions:
-                        capture_row, capture_col = row + delta_row, col + delta_col
-                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                            if board[capture_row][capture_col] == self.botTurn:
-                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                    value -= 1
-                            capture_row += delta_row
-                            capture_col += delta_col
-                            descent_diag_row += delta_row
-                            descent_diag_col += delta_col
                     
         if is_game_over(board) == self.botTurn:
             value += 100
-        elif is_game_over(board) == self.oppTurn:
-            value -= 100
+
         return value
 
 class User(Player):
@@ -354,11 +327,16 @@ class User(Player):
         row, col = y // squareSize, x // squareSize
         return row, col
     
-    def handle_mouse_click(self, row, col):
+    def handle_mouse_click(self, row, col, board):
+        turn = None
         if (self.selectedPiece is None or self.selectedPiece == (row, col)):
-            self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.board)
+            self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
+            board, turn = board, self.turn
+            print('Selected Piece:', self.selectedPiece, 'Valid Moves:', self.validMoves, 'Capture Pos:', self.capturePos)
         else:
-            self.move_piece([row, col], self.turn, self.board)
+            board, turn = self.move_piece([row, col], self.turn, board)
+            print('hi!')
+        return board, turn
 
 class Minimax(Player):
     def __init__(self, turn, depth, board):
@@ -378,6 +356,7 @@ class Minimax(Player):
 
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board) in ['w', 'b']:
+            print(self.evaluate_board(board))
             return self.evaluate_board(board), None, None
         
         if maximizing:
@@ -472,17 +451,17 @@ def main():
         running = True  
         nummoves = 0
         # player1 = User('b', board.board)
-        # player2 = User('w', board.board)
-        player1 = randomBot('b', board.board)
+        player2 = User('w', board.board)
+        # player1 = randomBot('b', board.board)
         # player2 = randomBot('w', board.board)
-        # player1 = Minimax('b', depth1, board.board)
-        player2 = Minimax('w', 5, board.board)
+        player1 = Minimax('b', 5, board.board)
+        # player2 = Minimax('w', 5, board.board)
         
         while running:
             isGameOver = is_game_over(board.board)
             if isGameOver in ['b', 'w']:
-                print(countBlack(board.board), countWhite(board.board))
-                running = False
+                # print(countBlack(board.board), countWhite(board.board))
+                # running = False
                 print('Game Over, Winner: ', isGameOver)
                 # winnerData(loop, isGameOver, filename)
 
@@ -498,10 +477,12 @@ def main():
                         for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
                                 row, col = player1.get_mouse_pos()
-                                player1.handle_mouse_click(row, col)
+                                board.board, board.turn = player1.handle_mouse_click(row, col, board.board)
+                                player1.turn = board.turn
+                                player2.turn = board.turn
                     else:
-                        bestPiece, bestMove = player1.playRandom(board.board)
-                        # bestPiece, bestMove = player1.playMM(board.board)
+                        # bestPiece, bestMove = player1.playRandom(board.board)
+                        bestPiece, bestMove = player1.playMM(board.board)
                         # bestPiece, bestMove = player1.playAB(board.board)
                         if bestPiece is not None and bestMove is not None:
                             board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
@@ -514,10 +495,15 @@ def main():
                     if player2.user:
                         for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
+                                print('player2', board.turn)
                                 row, col = player2.get_mouse_pos()
-                                player2.handle_mouse_click(row, col)
+                                board.board, board.turn = player2.handle_mouse_click(row, col, board.board)
+                                print('player2', board.turn)
+                                player1.turn = board.turn
+                                player2.turn = board.turn
                     else:
-                        bestPiece, bestMove = player2.playMM(board.board)
+                        bestPiece, bestMove = player2.playRandom(board.board)
+                        # bestPiece, bestMove = player2.playMM(board.board)
                         # bestPiece, bestMove = player2.playAB(board.board)
                         if bestPiece is not None and bestMove is not None:
                             board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)

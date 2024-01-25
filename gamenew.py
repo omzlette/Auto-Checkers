@@ -264,39 +264,76 @@ class Player():
             for col in range(cols):
                 # No. of pieces (each piece = +1 point)
                 if board[row][col] == self.botTurn:
-                    value += 1
+                    value += 5
                 elif board[row][col] == self.oppTurn:
-                    value -= 1
+                    value -= 5
                 # No. of kings (each king = +5 points)
                 if board[row][col] == self.botTurn.upper():
-                    value += 5
+                    value += 10
                 elif board[row][col] == self.oppTurn.upper():
-                    value -= 5
+                    value -= 10
                 ### METHOD 1 ###
                 # Each line (Men)
-                if board[row][col] == self.botTurn:
-                    if row < 3:
-                        value += row
-                    elif row == 0:
-                        value += 2
-                    else:
-                        value += 3
-                    # Crossed middle line (col)
-                    if (row > 3) and (col == 0 or col == 7):
-                        value += 1
-                    elif (row > 3) and (col != 0 or col != 7):
-                        value += 2
+                # if self.botTurn == 'b':
+                #     if board[row][col] == self.botTurn:
+                #         if 0 < row < 3:
+                #             value += row
+                #         elif row == 0:
+                #             value += 2
+                #         elif row == 7 and board[row][col] == 'b':
+                #             # Encourage to make king
+                #             value += 4
+                #         else:
+                #             value += 3
+                #         # wall penalty
+                #         if row > 1 and (col == 0 or col == 7):
+                #             value -= 0.5
+                # elif self.botTurn == 'w':
+                #     if board[row][col] == self.botTurn:
+                #         if 4 < row < 7:
+                #             value += (7-row)
+                #         elif row == 7:
+                #             value += 2
+                #         elif row == 0 and board[row][col] == 'w':
+                #             # Encourage to make king
+                #             value += 4
+                #         else:
+                #             value += 3
+                #         # wall penalty
+                #         if row > 1 and (col == 0 or col == 7):
+                #             value -= 0.5
 
                 ### METHOD 2 ###
                 # Each line (Men)
-                # if board[row][col] == self.botTurn:
-                #     if row == 0:
-                #         value += 2
-                #     elif row == 1 and (col == 0 or col == 7):
-                #         value += 1
-                #     else:
-                #         value += 3
-                
+                if self.botTurn == 'b':
+                    if board[row][col] == self.botTurn:
+                        if row == 0:
+                            value += 2
+                        elif row == 1 or (1 < row < 4 and not 1 < col < 6):
+                            value += 1
+                        elif row == 7 and board[row][col] == 'b':
+                            # Encourage to make king
+                            value += 4
+                        else:
+                            value += 3
+                        # wall penalty
+                        if row > 1 and (col == 0 or col == 7):
+                            value -= 0.5
+                elif self.botTurn == 'w':
+                    if board[row][col] == self.botTurn:
+                        if row == 7:
+                            value += 2
+                        elif row == 6 or (4 < row < 7 and not 1 < col < 6):
+                            value += 1
+                        elif row == 0 and board[row][col] == 'w':
+                            # Encourage to make king
+                            value += 4
+                        else:
+                            value += 3
+                        # wall penalty
+                        if row > 1 and (col == 0 or col == 7):
+                            value -= 0.5
+
                 # King's position (Kings)
                 directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
                 if board[row][col] == self.botTurn.upper():

@@ -502,3 +502,52 @@ def evaluate_board(board):
     return value
 
 print(evaluate_board(newboard))
+
+
+# def select_piece(self, row, col, turn, board):
+#     # check if piece is valid and not conflicting with mandatory capture
+#     selectedPiece, validMoves, capturePos = [], [], []
+#     self.mandatory_moves = self.get_mandatory_capture(turn, board)
+#     if self.mandatory_moves:
+#         if [row, col] in self.mandatory_moves:
+#             selectedPiece = [row, col]
+#             validMoves, capturePos = self.get_valid_moves(row, col, board)
+#     else:
+#         if board[row][col].lower() == 'b':
+#             if turn == 'b':
+#                 selectedPiece = [row, col]
+#                 validMoves, capturePos = self.get_valid_moves(row, col, board)
+#         elif board[row][col].lower() == 'w':
+#             if turn == 'w':
+#                 selectedPiece = [row, col]
+#                 validMoves, capturePos = self.get_valid_moves(row, col, board)
+#     return selectedPiece, validMoves, capturePos
+
+# def move_piece(self, moveto, turn, board):
+#     [rowMove, colMove] = moveto
+#     if self.validMoves is not None and [rowMove, colMove] in self.validMoves:
+#         board[rowMove][colMove] = board[self.selectedPiece[0]][self.selectedPiece[1]]
+#         board[self.selectedPiece[0]][self.selectedPiece[1]] = '-'
+#         if self.capturePos != []:
+#             idxtoRemove = self.validMoves.index([rowMove, colMove])
+#             board[self.capturePos[idxtoRemove][0]][self.capturePos[idxtoRemove][1]] = '-'
+#             self.capturePos = []
+#             self.mandatory_moves = self.get_mandatory_capture(turn, board)
+#         board = self.make_king(rowMove, colMove, board)
+#         self.selectedPiece = None
+#         self.validMoves = None
+#         if not self.mandatory_moves:
+#             turn = 'w' if turn == 'b' else 'b'
+#     else:
+#         if board[rowMove][colMove].lower() == self.turn and self.mandatory_moves == []:
+#             self.selectedPiece = (rowMove, colMove)
+#             self.validMoves, self.capturePos = self.get_valid_moves(rowMove, colMove, board)
+#         else:
+#             self.selectedPiece = None
+#             self.validMoves = None
+#     return board, turn
+
+a = [1,2,3]
+b = []
+
+print(a, b)

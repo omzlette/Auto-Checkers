@@ -171,7 +171,7 @@ class Player():
                             else:
                                 break
                         else:
-                            break                            
+                            break
         return (moves, capturePos) if moves else ([], [])
     
     def can_capture(self, row, col, board):
@@ -329,7 +329,7 @@ class Player():
                 #     if board[row][col] == self.botTurn:
                 #         if row == 0:
                 #             value += 2
-                #         elif row == 1 or (1 < row < 4 and not 1 < col < 6):
+                #         elif row == 1 or (1 < row < 4 and not 0 < col < 7):
                 #             value += 1
                 #         elif row == 7 and board[row][col] == 'b':
                 #             # Encourage to make king
@@ -343,7 +343,7 @@ class Player():
                 #     if board[row][col] == self.botTurn:
                 #         if row == 7:
                 #             value += 2
-                #         elif row == 6 or (4 < row < 7 and not 1 < col < 6):
+                #         elif row == 6 or (4 < row < 7 and not 0 < col < 7):
                 #             value += 1
                 #         elif row == 0 and board[row][col] == 'w':
                 #             # Encourage to make king
@@ -509,9 +509,9 @@ def main():
         # player1 = User('b', board.board)
         # player2 = User('w', board.board)
         # player1 = randomBot('b', board.board)
-        player2 = randomBot('w', board.board)
+        # player2 = randomBot('w', board.board)
         player1 = Minimax('b', 5, board.board)
-        # player2 = Minimax('w', 5, board.board)
+        player2 = Minimax('w', 3, board.board)
         
         while running:
             isGameOver = is_game_over(board.board)
@@ -558,8 +558,8 @@ def main():
                                 player1.turn = board.turn
                                 player2.turn = board.turn
                     else:
-                        bestPiece, bestMove = player2.playRandom(board.board)
-                        # bestPiece, bestMove = player2.playMM(board.board)
+                        # bestPiece, bestMove = player2.playRandom(board.board)
+                        bestPiece, bestMove = player2.playMM(board.board)
                         # bestPiece, bestMove = player2.playAB(board.board)
                         if bestPiece is not None and bestMove is not None:
                             board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)

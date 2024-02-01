@@ -547,7 +547,60 @@ print(evaluate_board(newboard))
 #             self.validMoves = None
 #     return board, turn
 
-a = [1,2,3]
-b = []
+testBoard = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
+            ['b', '-', 'b', '-', 'b', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', 'b'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', 'w', '-'],
+            ['-', 'w', '-', 'w', '-', 'w', '-', '-'],
+            ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
 
-print(a, b)
+def testEval(board, turn):
+    value = 0
+    for row in range(rows):
+        for col in range(cols):
+            # No. of pieces (each piece = +1 point)
+            if board[row][col] == 'b':
+                value += 5
+            elif board[row][col] == 'w':
+                value -= 5
+            # No. of kings (each king = +5 points)
+            if board[row][col] == 'b'.upper():
+                value += 10
+            elif board[row][col] == 'w'.upper():
+                value -= 10
+            ### METHOD 1 ###
+            # Each line (Men)
+            if turn == 'b':
+                if board[row][col] == 'b':
+                    if 0 < row < 3:
+                        value += row
+                    elif row == 0:
+                        value += 2
+                    elif row == 7 and board[row][col] == 'b':
+                        # Encourage to make king
+                        value += 4
+                    else:
+                        value += 3
+                    # wall penalty
+                    if row > 1 and (col == 0 or col == 7):
+                        value -= 0.5
+            elif turn == 'w':
+                if board[row][col] == 'b':
+                    if 4 < row < 7:
+                        value += (7-row)
+                    elif row == 7:
+                        value += 2
+                    elif row == 0 and board[row][col] == 'w':
+                        # Encourage to make king
+                        value += 4
+                    else:
+                        value += 3
+                    # wall penalty
+                    if row > 1 and (col == 0 or col == 7):
+                        value -= 0.5
+
+    return value
+
+print(testEval(testBoard, 'w'))

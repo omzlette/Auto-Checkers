@@ -263,6 +263,8 @@ class Player():
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
         board, turn = self.move_piece(move, self.turn, board)
+        with open(f'bestEval{self.turn.upper()}.txt', 'a') as f:
+            f.write(f'{np.array(board)}\n')
         return board, turn
 
     def simulate_game(self, piece, move, turn, board):
@@ -401,9 +403,12 @@ class Minimax(Player):
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
         self.depth = depth
+        self.paths = []
 
     def playMM(self, board):
-        _, bestPiece, bestMove = self.minimax(board, self.depth, True)
+        bestVal, bestPiece, bestMove = self.minimax(board, self.depth, True)
+        with open(f'bestEval{self.botTurn.upper()}.txt', 'a') as f:
+            f.write(f'Best Value: {bestVal}, Best Piece: {bestPiece}, Best Move: {bestMove}\n')
         return bestPiece, bestMove
     
     def playAB(self, board):
@@ -412,14 +417,17 @@ class Minimax(Player):
 
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board) in ['w', 'b']:
-            print(self.evaluate_board(board))
+            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+                f.write(f'Eval: {self.evaluate_board(board)}\n')
+                f.write(f'{np.array(board)}\n')
+                f.write('='*20 + '\n')
             return self.evaluate_board(board), None, None
         
         if maximizing:
             maxEval = -np.inf
             bestPiece = None
             bestMove = None
-            movesdict = self.shuffle_dict(self.get_all_moves(self.botTurn, board))
+            movesdict = self.get_all_moves(self.botTurn, board)
             for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)
@@ -427,13 +435,18 @@ class Minimax(Player):
                 if maxEval == eval:
                     bestPiece = piece
                     bestMove = moveto
+            
+            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+                f.write(f'Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
+                f.write(f'{np.array(board)}\n')
+
             return maxEval, bestPiece, bestMove
         
         else:
             minEval = np.inf
             bestPiece = None
             bestMove = None
-            movesdict = self.shuffle_dict(self.get_all_moves(self.oppTurn, board))
+            movesdict = self.get_all_moves(self.oppTurn, board)
             for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, True)
@@ -441,6 +454,11 @@ class Minimax(Player):
                 if minEval == eval:
                     bestPiece = piece
                     bestMove = moveto
+
+            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+                f.write(f'Best Min Eval: {minEval}, Best Move: {bestMove}\n')
+                f.write(f'{np.array(board)}\n')
+
             return minEval, bestPiece, bestMove
 
     def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):

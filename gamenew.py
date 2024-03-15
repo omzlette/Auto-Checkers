@@ -308,7 +308,7 @@ class Player():
                         else:
                             value += 3
                         # wall penalty
-                        if row > 1 and (col == 0 or col == 7):
+                        if 1 < row < 6 and (col == 0 or col == 7):
                             value -= 0.5
                 elif self.botTurn == 'w':
                     if board[row][col] == self.botTurn:
@@ -322,8 +322,36 @@ class Player():
                         else:
                             value += 3
                         # wall penalty
-                        if row > 1 and (col == 0 or col == 7):
+                        if 1 < row < 6 and (col == 0 or col == 7):
                             value -= 0.5
+                elif self.oppTurn == 'b':
+                    if board[row][col] == self.oppTurn:
+                        if 0 < row < 3:
+                            value -= row
+                        elif row == 0:
+                            value -= 2
+                        elif row == 7 and board[row][col] == 'b':
+                            # Encourage to make king
+                            value -= 4
+                        else:
+                            value -= 3
+                        # wall penalty
+                        if 1 < row < 6 and (col == 0 or col == 7):
+                            value += 0.5
+                elif self.oppTurn == 'w':
+                    if board[row][col] == self.oppTurn:
+                        if 4 < row < 7:
+                            value -= (7-row)
+                        elif row == 7:
+                            value -= 2
+                        elif row == 0 and board[row][col] == 'w':
+                            # Encourage to make king
+                            value -= 4
+                        else:
+                            value -= 3
+                        # wall penalty
+                        if 1 < row < 6 and (col == 0 or col == 7):
+                            value += 0.5
 
                 ### METHOD 2 ###
                 # Each line (Men)
@@ -370,7 +398,7 @@ class Player():
                             capture_col += delta_col
                             descent_diag_row += delta_row
                             descent_diag_col += delta_col
-                    
+
         if is_game_over(board) == self.botTurn:
             value += 100
 
@@ -437,8 +465,9 @@ class Minimax(Player):
                     bestMove = moveto
             
             with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(board)}\n')
+                f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
+                f.write(f'{np.array(new_board)}\n')
+                f.write('='*20 + '\n')
 
             return maxEval, bestPiece, bestMove
         
@@ -456,8 +485,9 @@ class Minimax(Player):
                     bestMove = moveto
 
             with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Best Min Eval: {minEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(board)}\n')
+                f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
+                f.write(f'{np.array(new_board)}\n')
+                f.write('='*20 + '\n')
 
             return minEval, bestPiece, bestMove
 

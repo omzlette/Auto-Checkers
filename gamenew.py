@@ -15,7 +15,7 @@ BLACK = (0, 0, 0)
 BROWN = (133, 84, 49)
 LIGHT_BROWN = (252, 230, 215)
 
-width, height = 800, 800
+width, height = 400, 400
 rows, cols = 8, 8
 squareSize = width // rows
 
@@ -36,14 +36,14 @@ class Checkers:
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
                           ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
-            # self.board = [['-', 'b', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', 'b', '-', 'b', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', 'w', '-', '-', '-', '-', '-', 'W'],
+            # self.board = [['-', '-', '-', 'W', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['w', '-', '-', '-', '-', '-', '-', '-']]
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', 'w', '-', '-'],
+            #               ['w', '-', '-', '-', 'B', '-', 'B', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', 'B', '-']]
         else:
             self.board = board
         self.turn = turn # current turn
@@ -445,10 +445,10 @@ class Minimax(Player):
 
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board) in ['w', 'b']:
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Eval: {self.evaluate_board(board)}\n')
-                f.write(f'{np.array(board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Eval: {self.evaluate_board(board)}\n')
+            #     f.write(f'{np.array(board)}\n')
+            #     f.write('='*20 + '\n')
             return self.evaluate_board(board), None, None
         
         if maximizing:
@@ -464,10 +464,10 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
             
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(new_board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
+            #     f.write(f'{np.array(new_board)}\n')
+            #     f.write('='*20 + '\n')
 
             return maxEval, bestPiece, bestMove
         
@@ -484,10 +484,10 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
 
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(new_board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
+            #     f.write(f'{np.array(new_board)}\n')
+            #     f.write('='*20 + '\n')
 
             return minEval, bestPiece, bestMove
 
@@ -555,18 +555,19 @@ def main():
         running = True  
         nummoves = 0
         # player1 = User('b', board.board)
-        # player2 = User('w', board.board)
+        player2 = User('w', board.board)
         # player1 = randomBot('b', board.board)
         # player2 = randomBot('w', board.board)
         player1 = Minimax('b', 5, board.board)
-        player2 = Minimax('w', 3, board.board)
+        # player2 = Minimax('w', 5, board.board)
         
         while running:
             isGameOver = is_game_over(board.board)
             if isGameOver in ['b', 'w']:
                 # print(countBlack(board.board), countWhite(board.board))
                 # running = False
-                print('Game Over, Winner: ', isGameOver)
+                print('Game Over, Winner: ', 'Black' if isGameOver is 'b' else 'White')
+                # pass
                 # winnerData(loop, isGameOver, filename)
 
             board.screen.fill(BROWN)
@@ -584,6 +585,8 @@ def main():
                                 board.board, board.turn = player1.handle_mouse_click(row, col, board.board)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
+                                nummoves += 1
+                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player1.playRandom(board.board)
                         bestPiece, bestMove = player1.playMM(board.board)
@@ -593,7 +596,8 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'w'
-                    nummoves += 1
+                        nummoves += 1
+                        print('Moves:', nummoves, 'Turn:', board.turn)
                     
                 elif board.turn == 'w':
                     if player2.user:
@@ -605,6 +609,8 @@ def main():
                                 print('player2', board.turn)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
+                                nummoves += 1
+                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player2.playRandom(board.board)
                         bestPiece, bestMove = player2.playMM(board.board)
@@ -614,17 +620,18 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'b'
-                    nummoves += 1        
-            
+                        nummoves += 1
+                        print('Moves:', nummoves, 'Turn:', board.turn) 
+
             # writeData(loop, nummoves, 'data/resource_usage.csv')
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     running = False
-                    if countBlack(board.board) > countWhite(board.board):
+                    if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
                         print('Game Over, Winner: Black')
                         # winnerData(loop, 'b', filename)
-                    elif countBlack(board.board) < countWhite(board.board):
+                    elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
                         print('Game Over, Winner: White')
                         # winnerData(loop, 'w', filename)
                     # else:
@@ -685,7 +692,9 @@ def is_game_over(board):
         tempw.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
     if all(not i for i in tempw) or countWhite(board) == 0:
         return 'b'
-    
+
+    # print(tempb, tempw)
+
     return False
 
 def check_basic_valid_moves(row, col, board):
@@ -694,7 +703,7 @@ def check_basic_valid_moves(row, col, board):
             return True
         if 0 <= row+1 <= 7 and 0 <= col+1 <= 7 and board[row+1][col+1] == '-':
             return True
-    elif board[row][col].lower() == 'w' or board[row][col] == 'B':
+    if board[row][col].lower() == 'w' or board[row][col] == 'B':
         if 0 <= row-1 <= 7 and 0 <= col-1 <= 7 and board[row-1][col-1] == '-':
             return True
         if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':

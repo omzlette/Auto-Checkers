@@ -28,22 +28,22 @@ class Checkers:
         pygame.display.set_caption(self.windowsName)
 
         if board is None:
-            self.board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
-                          ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+            # self.board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
+            #               ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
+            #               ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+            self.board = [['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
-                          ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
-                          ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
-            # self.board = [['-', '-', '-', 'W', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', 'w', '-', '-'],
-            #               ['w', '-', '-', '-', 'B', '-', 'B', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', 'B', '-']]
+                          ['-', '-', '-', '-', '-', '-', '-', '-'],
+                          ['-', '-', '-', '-', '-', 'W', '-', 'w'],
+                          ['-', '-', '-', '-', '-', '-', 'B', '-']]
         else:
             self.board = board
         self.turn = turn # current turn
@@ -552,22 +552,23 @@ def main():
         # filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
 
         board = Checkers()
-        running = True  
+        isGameOver = False
+        running = True
         nummoves = 0
-        # player1 = User('b', board.board)
-        player2 = User('w', board.board)
+        player1 = User('b', board.board)
+        # player2 = User('w', board.board)
         # player1 = randomBot('b', board.board)
         # player2 = randomBot('w', board.board)
-        player1 = Minimax('b', 5, board.board)
-        # player2 = Minimax('w', 5, board.board)
+        # player1 = Minimax('b', 5, board.board)
+        player2 = Minimax('w', 5, board.board)
         
         while running:
             isGameOver = is_game_over(board.board)
             if isGameOver in ['b', 'w']:
                 # print(countBlack(board.board), countWhite(board.board))
                 # running = False
-                print('Game Over, Winner: ', 'Black' if isGameOver is 'b' else 'White')
-                # pass
+                # print('Game Over, Winner:', 'Black' if isGameOver == 'b' else 'White')
+                pass
                 # winnerData(loop, isGameOver, filename)
 
             board.screen.fill(BROWN)
@@ -677,23 +678,33 @@ def countWhite(board):
 
 def is_game_over(board):
     tempb = []
+    tempbmove = []
+    tempbcap = []
 
     xb = np.char.lower(np.array(board)) == 'b'
     pieceloclist = np.asarray(np.where(xb)).T.tolist()
     for pieceloc in pieceloclist:
-        tempb.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempbmove.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempbcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
+    for normMove, capMove in zip(tempbmove, tempbcap):
+        tempb.append(normMove or capMove)
     if all(not i for i in tempb) or countBlack(board) == 0:
+        # print('White wins', tempb, tempbmove, tempbcap)
         return 'w'
 
     tempw = []
+    tempwmove = []
+    tempwcap = []
     xw = np.char.lower(np.array(board)) == 'w'
     pieceloclist = np.asarray(np.where(xw)).T.tolist()
     for pieceloc in pieceloclist:
-        tempw.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempwmove.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempwcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
+    for normMove, capMove in zip(tempwmove, tempwcap):
+        tempw.append(normMove or capMove)
     if all(not i for i in tempw) or countWhite(board) == 0:
+        # print('Black wins', tempw)
         return 'b'
-
-    # print(tempb, tempw)
 
     return False
 
@@ -708,6 +719,35 @@ def check_basic_valid_moves(row, col, board):
             return True
         if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':
             return True
+    return False
+
+def check_basic_capture(row, col, board):
+    if board[row][col] == 'b':
+        if 0 <= row+2 <= 7 and 0 <= col-2 <= 7 and board[row+1][col-1].lower() == 'w' and board[row+2][col-2] == '-':
+            return True
+        if 0 <= row+2 <= 7 and 0 <= col+2 <= 7 and board[row+1][col+1].lower() == 'w' and board[row+2][col+2] == '-':
+            return True
+    if board[row][col] == 'w':
+        if 0 <= row-2 <= 7 and 0 <= col-2 <= 7 and board[row-1][col-1].lower() == 'b' and board[row-2][col-2] == '-':
+            return True
+        if 0 <= row-2 <= 7 and 0 <= col+2 <= 7 and board[row-1][col+1].lower() == 'b' and board[row-2][col+2] == '-':
+            return True
+    if board[row][col] == 'B' or board[row][col] == 'W':
+        directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+        for direction in directions:
+            for i in range(1, 8):
+                checkrow = row + direction[0] * i
+                checkcol = col + direction[1] * i
+                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7:
+                    if board[checkrow][checkcol] == '-':
+                        continue
+                    elif board[checkrow][checkcol].lower() != board[row][col].lower():
+                        if 0 <= checkrow+direction[0] <= 7 and 0 <= checkcol+direction[1] <= 7 and board[checkrow+direction[0]][checkcol+direction[1]] == '-':
+                            return True
+                    else:
+                        break
+                else:
+                    break
     return False
 
 if __name__ == '__main__':

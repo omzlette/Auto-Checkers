@@ -16,13 +16,13 @@ void loop() {
   // put your main code here, to run repeatedly:
   if (Serial.available() > 0) {
     data1 = Serial.readStringUntil('-').toInt();
-    data2 = Serial.readStringUntil('-').toInt();
+//    data2 = Serial.readStringUntil('-').toInt();
     Serial.print("Data1: ");
     Serial.print(data1);
     Serial.print("\n");
-    Serial.print("Data2: ");
-    Serial.print(data2);
-    Serial.print("\n");
+//    Serial.print("Data2: ");
+//    Serial.print(data2);
+//    Serial.print("\n");
   }
 }
 

@@ -6,7 +6,7 @@ import serial
 # print("NVIDIA Jetson Nano Developer Kit")
 
 serial_port = serial.Serial(
-    port="/dev/ttyTHS1",
+    port="/dev/ttyUSB0",
     baudrate=115200,
     bytesize=serial.EIGHTBITS,
     parity=serial.PARITY_NONE,
@@ -17,13 +17,13 @@ time.sleep(1)
 
 try:
     # Send a simple header
-    serial_port.write(b"100-200-")
+    serial_port.write(b"1")
     while True:
         # Wait until the device sends something back
         if serial_port.in_waiting > 0:
             # Read the data from the device
-            # data = serial_port.read_all()
-            # print(data)
+            data = serial_port.read_all()
+            print(data)
             break
     # Close the serial port
     serial_port.close()

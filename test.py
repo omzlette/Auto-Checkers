@@ -604,3 +604,32 @@ def testEval(board, turn):
     return value
 
 print(testEval(testBoard, 'w'))
+
+board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
+         ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+         ['-', '-', '-', '-', '-', '-', '-', '-'],
+         ['-', '-', '-', '-', '-', '-', '-', '-'],
+         ['-', '-', '-', '-', '-', '-', '-', '-'],
+         ['-', '-', 'w', '-', '-', '-', '-', '-'],
+         ['-', '-', '-', 'w', '-', 'w', '-', 'w'],
+         ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+
+
+directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+value = 0
+for row in range(rows):
+    for col in range(cols):
+        if board[row][col] == 'w':
+            tempWAdjacent = []
+            for direction in directions:
+                checkrow = row + direction[0]
+                checkcol = col + direction[1]
+                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'w':
+                    tempWAdjacent.append(True)
+                else:
+                    tempWAdjacent.append(False)
+            if any(tempWAdjacent):
+                value += 1
+            else:
+                value -= 1
+            print(tempWAdjacent, value)

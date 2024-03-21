@@ -36,6 +36,7 @@ class Checkers:
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
                           ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+            self.prevBoard = copy.deepcopy(self.board)
             # self.board = [['-', '-', '-', '-', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
@@ -122,6 +123,7 @@ class Player():
         return selectedPiece, validMoves, capturePos
     
     def move_piece(self, moveto, turn, board):
+        prevBoard = copy.deepcopy(board)
         [rowMove, colMove] = moveto
         if self.validMoves is not None and [rowMove, colMove] in self.validMoves:
             self.prevMove = [rowMove, colMove]
@@ -140,7 +142,7 @@ class Player():
                 turn = 'w' if turn == 'b' else 'b'
         else:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(rowMove, colMove, turn, board)
-        return board, turn
+        return board, turn, prevBoard
 
     def get_valid_moves(self, row, col, board):
         moves = []
@@ -262,13 +264,13 @@ class Player():
     
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
-        board, turn = self.move_piece(move, self.turn, board)
+        board, turn, _ = self.move_piece(move, self.turn, board)
         return board, turn
 
     def simulate_game(self, piece, move, turn, board):
         new_board = copy.deepcopy(board)
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
-        new_board, _ = self.move_piece(move, turn, new_board)
+        new_board, _, _ = self.move_piece(move, turn, new_board)
         self.init_variables()
         return new_board
     
@@ -464,13 +466,14 @@ class User(Player):
         return row, col
     
     def handle_mouse_click(self, row, col, board):
+        prevBoard = copy.deepcopy(board)
         turn = None
         if self.selectedPiece == []:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
             board, turn = board, self.turn
         else:
-            board, turn = self.move_piece([row, col], self.turn, board)
-        return board, turn
+            board, turn, prevBoard = self.move_piece([row, col], self.turn, board)
+        return board, turn, prevBoard
 
 class Minimax(Player):
     def __init__(self, turn, depth, max_depth, board):
@@ -627,6 +630,12 @@ def main():
         # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
         
         while running:
+            # for event in pygame.event.get():
+            #     print('Game running')
+            #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            #         running = False
+            #         print('Early Exiting...')
+
             isGameOver = is_game_over(board.board)
             if isGameOver in ['b', 'w']:
                 # print(countBlack(board.board), countWhite(board.board))
@@ -644,14 +653,12 @@ def main():
             if not isGameOver:
                 if board.turn == 'b':
                     if player1.user:
-                        for event in pygame.event.get():
+                        # for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
                                 row, col = player1.get_mouse_pos()
-                                board.board, board.turn = player1.handle_mouse_click(row, col, board.board)
+                                board.board, board.turn, board.prevBoard = player1.handle_mouse_click(row, col, board.board)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
-                                nummoves += 1
-                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player1.playRandom(board.board)
                         bestPiece, bestMove = player1.playMM(board.board)
@@ -661,19 +668,15 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'w'
-                        nummoves += 1
-                        print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player1.depth)
                     
                 elif board.turn == 'w':
                     if player2.user:
-                        for event in pygame.event.get():
+                        # for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
                                 row, col = player2.get_mouse_pos()
-                                board.board, board.turn = player2.handle_mouse_click(row, col, board.board)
+                                board.board, board.turn, board.prevBoard = player2.handle_mouse_click(row, col, board.board)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
-                                nummoves += 1
-                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player2.playRandom(board.board)
                         bestPiece, bestMove = player2.playMM(board.board)
@@ -683,14 +686,13 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'b'
-                        nummoves += 1
-                        print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player2.depth) 
+
+                if board.board != board.prevBoard:
+                    nummoves += 1
+                    board.prevBoard = copy.deepcopy(board.board)
+                    print('Moves:', nummoves, 'Turn:', board.turn)
 
             # writeData(loop, nummoves, 'data/resource_usage.csv')
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                        running = False
-                        print('Early Exiting...')
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):

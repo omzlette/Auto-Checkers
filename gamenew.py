@@ -263,8 +263,6 @@ class Player():
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
         board, turn = self.move_piece(move, self.turn, board)
-        with open(f'bestEval{self.turn.upper()}.txt', 'a') as f:
-            f.write(f'{np.array(board)}\n')
         return board, turn
 
     def simulate_game(self, piece, move, turn, board):
@@ -487,7 +485,7 @@ class Minimax(Player):
 
     def playMM(self, board):
         _, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
+        # self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
         self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
     
@@ -689,6 +687,10 @@ def main():
                         print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player2.depth) 
 
             # writeData(loop, nummoves, 'data/resource_usage.csv')
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                        running = False
+                        print('Early Exiting...')
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):

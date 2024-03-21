@@ -452,18 +452,22 @@ class Minimax(Player):
         self.init_depth = depth
         self.depth = depth
         self.max_depth = max_depth
-        self.prevCount = 16 # Initial Count
+        self.prevCount = countBlack(board) if turn == 'b' else countWhite(board)
         self.paths = []
 
     def playMM(self, board):
         _, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount) if not self.increased_depth else self.depth
+        if countBlack(board) != self.prevCount:
+            self.increased_depth = False
+        self.depth = self.increase_depth(board, self.depth, self.max_depth) if not self.increased_depth else self.depth
         self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
-    
+
     def playAB(self, board):
         _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
-        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
+        if countBlack(board) != self.prevCount:
+            self.increased_depth = False
+        self.depth = self.increase_depth(board, self.depth, self.max_depth)
         self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
 
@@ -474,13 +478,12 @@ class Minimax(Player):
             #     f.write(f'{np.array(board)}\n')
             #     f.write('='*20 + '\n')
             return self.evaluate_board(board), None, None
-        
+
         if maximizing:
             maxEval = -np.inf
             bestPiece = None
             bestMove = None
             movesdict = self.get_all_moves(self.botTurn, board)
-            print(movesdict)
             for piece, movetolist in movesdict.items():
                 for moveto in movetolist:
                     new_board = self.simulate_game(piece, moveto, self.botTurn, board)
@@ -555,19 +558,24 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
             return minEval, bestPiece, bestMove
-    
-    def increase_depth(self, board, current_depth, max_depth, prevCount):
+
+    def increase_depth(self, board, current_depth, max_depth):
         currCount = countBlack(board) + countWhite(board)
         ourPieces = countBlack(board) if self.botTurn == 'b' else countWhite(board)
         oppPieces = countWhite(board) if self.botTurn == 'b' else countBlack(board)
-        
+
         if currCount <= 8:
-            return 8
+            return max_depth
+
         if (ourPieces <= oppPieces/2 or oppPieces <= ourPieces/2) and (currCount >= 10):
-            return current_depth + 1
+            self.increased_depth = True
+            return current_depth + 1 if current_depth < max_depth else max_depth
+        elif ourPieces <= 6 or oppPieces <= 6:
+            self.increased_depth = True
+            return current_depth + 1 if current_depth < max_depth else max_depth
 
         return current_depth
-        
+
 
 class randomBot(Player):
     def __init__(self, turn, board):

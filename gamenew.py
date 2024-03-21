@@ -252,14 +252,12 @@ class Player():
         mandatory_moves = self.get_mandatory_capture(player, board)
         if mandatory_moves:
             for piece in mandatory_moves:
-                for move in self.get_valid_moves(piece[0], piece[1], board)[0]:
-                    moves[tuple(piece)] = move
+                moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
         else:
             for row in range(rows):
                 for col in range(cols):
-                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] is not None:
-                        for move in self.get_valid_moves(row, col, board)[0]:
-                            moves[(row, col)] = move
+                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] != []:
+                        moves[(row, col)] = self.get_valid_moves(row, col, board)[0]
         return moves
     
     def update_board(self, board, piece, move):
@@ -281,7 +279,7 @@ class Player():
     
     def evaluate_board(self, board):
         MANPIECE = 5
-        KINGPIECE = 10
+        KINGPIECE = 9
         KINGROW = 1
         PROMOTEPROTECTION = 1.5
         OTHERROWS = 3
@@ -391,37 +389,6 @@ class Player():
                             else:
                                 value -= ADJACENTBONUS
 
-                ### METHOD 2 ###
-                # Each line (Men)
-                # if self.botTurn == 'b':
-                #     if board[row][col] == self.botTurn:
-                #         if row == 0:
-                #             value += 2
-                #         elif row == 1 or (1 < row < 4 and not 0 < col < 7):
-                #             value += 1
-                #         elif row == 7 and board[row][col] == 'b':
-                #             # Encourage to make king
-                #             value += 4
-                #         else:
-                #             value += 3
-                #         # wall penalty
-                #         if row > 1 and (col == 0 or col == 7):
-                #             value -= 0.5
-                # elif self.botTurn == 'w':
-                #     if board[row][col] == self.botTurn:
-                #         if row == 7:
-                #             value += 2
-                #         elif row == 6 or (4 < row < 7 and not 0 < col < 7):
-                #             value += 1
-                #         elif row == 0 and board[row][col] == 'w':
-                #             # Encourage to make king
-                #             value += 4
-                #         else:
-                #             value += 3
-                #         # wall penalty
-                #         if row > 1 and (col == 0 or col == 7):
-                #             value -= 0.5
-
                 # King's position (Kings)
                 directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
                 if board[row][col] == self.botTurn.upper():
@@ -481,6 +448,8 @@ class Minimax(Player):
         self.botTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
+        self.increased_depth = False
+        self.init_depth = depth
         self.depth = depth
         self.max_depth = max_depth
         self.prevCount = 16 # Initial Count
@@ -488,7 +457,7 @@ class Minimax(Player):
 
     def playMM(self, board):
         _, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        # self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
+        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount) if not self.increased_depth else self.depth
         self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
     
@@ -512,13 +481,14 @@ class Minimax(Player):
             bestMove = None
             movesdict = self.get_all_moves(self.botTurn, board)
             print(movesdict)
-            for piece, moveto in movesdict.items():
-                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.minimax(new_board, depth-1, False)
-                maxEval = max(maxEval, eval)
-                if maxEval == eval:
-                    bestPiece = piece
-                    bestMove = moveto
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                    eval, _, _ = self.minimax(new_board, depth-1, False)
+                    maxEval = max(maxEval, eval)
+                    if maxEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
             
             # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
             #     f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
@@ -532,13 +502,14 @@ class Minimax(Player):
             bestPiece = None
             bestMove = None
             movesdict = self.get_all_moves(self.oppTurn, board)
-            for piece, moveto in movesdict.items():
-                new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                eval, _, _ = self.minimax(new_board, depth-1, True)
-                minEval = min(minEval, eval)
-                if minEval == eval:
-                    bestPiece = piece
-                    bestMove = moveto
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                    eval, _, _ = self.minimax(new_board, depth-1, True)
+                    minEval = min(minEval, eval)
+                    if minEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
 
             # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
             #     f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
@@ -587,10 +558,13 @@ class Minimax(Player):
     
     def increase_depth(self, board, current_depth, max_depth, prevCount):
         currCount = countBlack(board) + countWhite(board)
-        print('Prev:', prevCount, 'Curr:', currCount, 'Depth:', current_depth, 'Max:', max_depth)
-        if prevCount != currCount:
-            if countBlack(board) <= 6 or countWhite(board) <= 6:
-                return current_depth + 1 if current_depth < max_depth else max_depth
+        ourPieces = countBlack(board) if self.botTurn == 'b' else countWhite(board)
+        oppPieces = countWhite(board) if self.botTurn == 'b' else countBlack(board)
+        
+        if currCount <= 8:
+            return 8
+        if (ourPieces <= oppPieces/2 or oppPieces <= ourPieces/2) and (currCount >= 10):
+            return current_depth + 1
 
         return current_depth
         
@@ -691,7 +665,7 @@ def main():
                 if board.board != board.prevBoard:
                     nummoves += 1
                     board.prevBoard = copy.deepcopy(board.board)
-                    print('Moves:', nummoves, 'Turn:', board.turn)
+                    print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player1.depth)
 
             # writeData(loop, nummoves, 'data/resource_usage.csv')
 

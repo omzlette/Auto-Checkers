@@ -633,3 +633,16 @@ for row in range(rows):
             else:
                 value -= 1
             print(tempWAdjacent, value)
+
+def addtoDict(dict, key, value):
+    if key in dict:
+        dict[key].append(value)
+    else:
+        dict[key] = [value]
+
+testDict = {}
+addtoDict(testDict, 'a', 1)
+addtoDict(testDict, 'a', 2)
+addtoDict(testDict, 'b', 3)
+addtoDict(testDict, 'b', 4)
+print(testDict)

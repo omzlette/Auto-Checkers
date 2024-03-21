@@ -711,6 +711,9 @@ def main():
                     #     nummoves = 0
             #     if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             #         print(self.turn, player1.user, player2.user)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    print('Restarting...')
+                    main()
         pygame.quit()
 
 # def winnerData(loop, winner, filename='winner.csv'):

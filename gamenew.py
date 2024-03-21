@@ -15,7 +15,7 @@ BLACK = (0, 0, 0)
 BROWN = (133, 84, 49)
 LIGHT_BROWN = (252, 230, 215)
 
-width, height = 800, 800
+width, height = 400, 400
 rows, cols = 8, 8
 squareSize = width // rows
 
@@ -36,14 +36,14 @@ class Checkers:
                           ['-', '-', '-', '-', '-', '-', '-', '-'],
                           ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
                           ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
-            # self.board = [['-', 'b', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', '-', '-', 'b', '-', 'b', '-', '-'],
-            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['-', 'w', '-', '-', '-', '-', '-', 'W'],
+            # self.board = [['-', '-', '-', '-', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
             #               ['-', '-', '-', '-', '-', '-', '-', '-'],
-            #               ['w', '-', '-', '-', '-', '-', '-', '-']]
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', '-', '-'],
+            #               ['-', '-', '-', '-', '-', 'B', '-', '-'],
+            #               ['-', '-', '-', '-', '-', '-', 'B', '-']]
         else:
             self.board = board
         self.turn = turn # current turn
@@ -280,20 +280,29 @@ class Player():
         return {key: dict[key] for key in keys}
     
     def evaluate_board(self, board):
+        MANPIECE = 5
+        KINGPIECE = 10
+        KINGROW = 1
+        PROMOTEPROTECTION = 1.5
+        OTHERROWS = 3
+        WALLPENALTY = 0.5
+        ADJACENTBONUS = 3
+        GAMEOVER = 100
+        KINGPOSITIONING = 1
         # piece counting
         value = 0
         for row in range(rows):
             for col in range(cols):
                 # No. of pieces (each piece = +1 point)
                 if board[row][col] == self.botTurn:
-                    value += 5
+                    value += MANPIECE
                 elif board[row][col] == self.oppTurn:
-                    value -= 5
+                    value -= MANPIECE
                 # No. of kings (each king = +5 points)
                 if board[row][col] == self.botTurn.upper():
-                    value += 10
+                    value += KINGPIECE
                 elif board[row][col] == self.oppTurn.upper():
-                    value -= 10
+                    value -= KINGPIECE
                 ### METHOD 1 ###
                 # Each line (Men)
                 if self.botTurn == 'b':
@@ -301,57 +310,86 @@ class Player():
                         if 0 < row < 3:
                             value += row
                         elif row == 0:
-                            value += 2
-                        elif row == 7 and board[row][col] == 'b':
-                            # Encourage to make king
-                            value += 4
+                            value += KINGROW
+                        elif row == 0 and (col == 1 or col == 5):
+                            value += PROMOTEPROTECTION
                         else:
-                            value += 3
+                            value += OTHERROWS
                         # wall penalty
-                        if 1 < row < 6 and (col == 0 or col == 7):
-                            value -= 0.5
+                        if 0 <= row <= 6 and (col == 0 or col == 7):
+                            value -= WALLPENALTY
                 elif self.botTurn == 'w':
                     if board[row][col] == self.botTurn:
                         if 4 < row < 7:
                             value += (7-row)
                         elif row == 7:
-                            value += 2
-                        elif row == 0 and board[row][col] == 'w':
-                            # Encourage to make king
-                            value += 4
+                            value += KINGROW
+                        elif row == 7 and (col == 2 or col == 6):
+                            value += PROMOTEPROTECTION
                         else:
-                            value += 3
+                            value += OTHERROWS
                         # wall penalty
-                        if 1 < row < 6 and (col == 0 or col == 7):
-                            value -= 0.5
+                        if 0 <= row <= 6 and (col == 0 or col == 7):
+                            value -= WALLPENALTY
                 elif self.oppTurn == 'b':
                     if board[row][col] == self.oppTurn:
                         if 0 < row < 3:
                             value -= row
                         elif row == 0:
-                            value -= 2
-                        elif row == 7 and board[row][col] == 'b':
-                            # Encourage to make king
-                            value -= 4
+                            value -= KINGROW
+                        elif row == 0 and (col == 1 or col == 5):
+                            value -= PROMOTEPROTECTION
                         else:
-                            value -= 3
+                            value -= OTHERROWS
                         # wall penalty
-                        if 1 < row < 6 and (col == 0 or col == 7):
-                            value += 0.5
+                        if 0 <= row <= 6 and (col == 0 or col == 7):
+                            value += WALLPENALTY
                 elif self.oppTurn == 'w':
                     if board[row][col] == self.oppTurn:
                         if 4 < row < 7:
                             value -= (7-row)
                         elif row == 7:
-                            value -= 2
-                        elif row == 0 and board[row][col] == 'w':
-                            # Encourage to make king
-                            value -= 4
+                            value -= KINGROW
+                        elif row == 7 and (col == 2 or col == 6):
+                            value -= PROMOTEPROTECTION
                         else:
-                            value -= 3
+                            value -= OTHERROWS
                         # wall penalty
-                        if 1 < row < 6 and (col == 0 or col == 7):
-                            value += 0.5
+                        if 0 <= row <= 6 and (col == 0 or col == 7):
+                            value += WALLPENALTY
+
+                # Evaluate adjacent pieces
+                    directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+                    if self.botTurn == 'b':
+                        if countBlack(board) > 4:
+                            tempBAdjacent = []
+                            for direction in directions:
+                                checkrow = row + direction[0]
+                                checkcol = col + direction[1]
+                                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'b':
+                                    tempBAdjacent.append(True)
+                                else:
+                                    tempBAdjacent.append(False)
+                            for adjacent in tempBAdjacent:
+                                if adjacent:
+                                    value += ADJACENTBONUS
+                                else:
+                                    value -= ADJACENTBONUS
+
+                    elif self.botTurn == 'w':
+                        if countWhite(board) > 4:
+                            tempWAdjacent = []
+                            for direction in directions:
+                                checkrow = row + direction[0]
+                                checkcol = col + direction[1]
+                                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'w':
+                                    tempWAdjacent.append(True)
+                                else:
+                                    tempWAdjacent.append(False)
+                            if any(tempWAdjacent):
+                                value += ADJACENTBONUS
+                            else:
+                                value -= ADJACENTBONUS
 
                 ### METHOD 2 ###
                 # Each line (Men)
@@ -384,23 +422,36 @@ class Player():
                 #         if row > 1 and (col == 0 or col == 7):
                 #             value -= 0.5
 
-                # King's position (Kings)
-                directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-                if board[row][col] == self.botTurn.upper():
-                    for delta_row, delta_col in directions:
-                        capture_row, capture_col = row + delta_row, col + delta_col
-                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                            if board[capture_row][capture_col] == self.oppTurn:
-                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                    value += 1
-                            capture_row += delta_row
-                            capture_col += delta_col
-                            descent_diag_row += delta_row
-                            descent_diag_col += delta_col
+                # # King's position (Kings)
+                # directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+                # if board[row][col] == self.botTurn.upper():
+                #     for delta_row, delta_col in directions:
+                #         capture_row, capture_col = row + delta_row, col + delta_col
+                #         descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                #         while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                #             if board[capture_row][capture_col] == self.oppTurn:
+                #                 if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                #                     value += KINGPOSITIONING
+                #             capture_row += delta_row
+                #             capture_col += delta_col
+                #             descent_diag_row += delta_row
+                #             descent_diag_col += delta_col
+
+                # elif board[row][col] == self.oppTurn.upper():
+                #     for delta_row, delta_col in directions:
+                #         capture_row, capture_col = row + delta_row, col + delta_col
+                #         descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                #         while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                #             if board[capture_row][capture_col] == self.botTurn:
+                #                 if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                #                     value -= KINGPOSITIONING
+                #             capture_row += delta_row
+                #             capture_col += delta_col
+                #             descent_diag_row += delta_row
+                #             descent_diag_col += delta_col
 
         if is_game_over(board) == self.botTurn:
-            value += 100
+            value += GAMEOVER
 
         return value
 
@@ -416,7 +467,6 @@ class User(Player):
     
     def handle_mouse_click(self, row, col, board):
         turn = None
-        print(self.turn, self.selectedPiece, self.validMoves, self.capturePos)
         if self.selectedPiece == []:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
             board, turn = board, self.turn
@@ -425,30 +475,34 @@ class User(Player):
         return board, turn
 
 class Minimax(Player):
-    def __init__(self, turn, depth, board):
+    def __init__(self, turn, depth, max_depth, board):
         super().__init__(turn, board)
         self.botTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
         self.depth = depth
+        self.max_depth = max_depth
+        self.prevCount = 16 # Initial Count
         self.paths = []
 
     def playMM(self, board):
-        bestVal, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        with open(f'bestEval{self.botTurn.upper()}.txt', 'a') as f:
-            f.write(f'Best Value: {bestVal}, Best Piece: {bestPiece}, Best Move: {bestMove}\n')
+        _, bestPiece, bestMove = self.minimax(board, self.depth, True)
+        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
+        self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
     
     def playAB(self, board):
         _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
+        self.depth = self.increase_depth(board, self.depth, self.max_depth, self.prevCount)
+        self.prevCount = countBlack(board) + countWhite(board)
         return bestPiece, bestMove
 
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board) in ['w', 'b']:
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Eval: {self.evaluate_board(board)}\n')
-                f.write(f'{np.array(board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Eval: {self.evaluate_board(board)}\n')
+            #     f.write(f'{np.array(board)}\n')
+            #     f.write('='*20 + '\n')
             return self.evaluate_board(board), None, None
         
         if maximizing:
@@ -464,10 +518,10 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
             
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(new_board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Current Eval: {eval}, Best Max Eval: {maxEval}, Best Move: {bestMove}\n')
+            #     f.write(f'{np.array(new_board)}\n')
+            #     f.write('='*20 + '\n')
 
             return maxEval, bestPiece, bestMove
         
@@ -484,10 +538,10 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
 
-            with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
-                f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
-                f.write(f'{np.array(new_board)}\n')
-                f.write('='*20 + '\n')
+            # with open(f'log{self.botTurn.upper()}.txt', 'a') as f:
+            #     f.write(f'Current Eval: {eval}, Best Min Eval: {minEval}, Best Move: {bestMove}\n')
+            #     f.write(f'{np.array(new_board)}\n')
+            #     f.write('='*20 + '\n')
 
             return minEval, bestPiece, bestMove
 
@@ -528,6 +582,16 @@ class Minimax(Player):
                     bestPiece = piece
                     bestMove = moveto
             return minEval, bestPiece, bestMove
+    
+    def increase_depth(self, board, current_depth, max_depth, prevCount):
+        currCount = countBlack(board) + countWhite(board)
+        print('Prev:', prevCount, 'Curr:', currCount, 'Depth:', current_depth, 'Max:', max_depth)
+        if prevCount != currCount:
+            if countBlack(board) <= 6 or countWhite(board) <= 6:
+                return current_depth + 1 if current_depth < max_depth else max_depth
+
+        return current_depth
+        
 
 class randomBot(Player):
     def __init__(self, turn, board):
@@ -552,21 +616,25 @@ def main():
         # filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
 
         board = Checkers()
-        running = True  
+        INITIAL_DEPTH = 5
+        MAX_DEPTH = 10
+        isGameOver = False
+        running = True
         nummoves = 0
         # player1 = User('b', board.board)
-        # player2 = User('w', board.board)
+        player2 = User('w', board.board)
         # player1 = randomBot('b', board.board)
         # player2 = randomBot('w', board.board)
-        player1 = Minimax('b', 5, board.board)
-        player2 = Minimax('w', 3, board.board)
+        player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
+        # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
         
         while running:
             isGameOver = is_game_over(board.board)
             if isGameOver in ['b', 'w']:
                 # print(countBlack(board.board), countWhite(board.board))
                 # running = False
-                print('Game Over, Winner: ', isGameOver)
+                # print('Game Over, Winner:', 'Black' if isGameOver == 'b' else 'White')
+                pass
                 # winnerData(loop, isGameOver, filename)
 
             board.screen.fill(BROWN)
@@ -584,6 +652,8 @@ def main():
                                 board.board, board.turn = player1.handle_mouse_click(row, col, board.board)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
+                                nummoves += 1
+                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player1.playRandom(board.board)
                         bestPiece, bestMove = player1.playMM(board.board)
@@ -593,18 +663,19 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'w'
-                    nummoves += 1
+                        nummoves += 1
+                        print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player1.depth)
                     
                 elif board.turn == 'w':
                     if player2.user:
                         for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
-                                print('player2', board.turn)
                                 row, col = player2.get_mouse_pos()
                                 board.board, board.turn = player2.handle_mouse_click(row, col, board.board)
-                                print('player2', board.turn)
                                 player1.turn = board.turn
                                 player2.turn = board.turn
+                                nummoves += 1
+                                print('Moves:', nummoves, 'Turn:', board.turn)
                     else:
                         # bestPiece, bestMove = player2.playRandom(board.board)
                         bestPiece, bestMove = player2.playMM(board.board)
@@ -614,17 +685,18 @@ def main():
                             player1.turn = board.turn
                             player2.turn = board.turn
                         # self.turn = 'b'
-                    nummoves += 1        
-            
+                        nummoves += 1
+                        print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player2.depth) 
+
             # writeData(loop, nummoves, 'data/resource_usage.csv')
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     running = False
-                    if countBlack(board.board) > countWhite(board.board):
+                    if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
                         print('Game Over, Winner: Black')
                         # winnerData(loop, 'b', filename)
-                    elif countBlack(board.board) < countWhite(board.board):
+                    elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
                         print('Game Over, Winner: White')
                         # winnerData(loop, 'w', filename)
                     # else:
@@ -670,22 +742,34 @@ def countWhite(board):
 
 def is_game_over(board):
     tempb = []
+    tempbmove = []
+    tempbcap = []
 
     xb = np.char.lower(np.array(board)) == 'b'
     pieceloclist = np.asarray(np.where(xb)).T.tolist()
     for pieceloc in pieceloclist:
-        tempb.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempbmove.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempbcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
+    for normMove, capMove in zip(tempbmove, tempbcap):
+        tempb.append(normMove or capMove)
     if all(not i for i in tempb) or countBlack(board) == 0:
+        # print('White wins', tempb, tempbmove, tempbcap)
         return 'w'
 
     tempw = []
+    tempwmove = []
+    tempwcap = []
     xw = np.char.lower(np.array(board)) == 'w'
     pieceloclist = np.asarray(np.where(xw)).T.tolist()
     for pieceloc in pieceloclist:
-        tempw.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempwmove.append(check_basic_valid_moves(pieceloc[0], pieceloc[1], board))
+        tempwcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
+    for normMove, capMove in zip(tempwmove, tempwcap):
+        tempw.append(normMove or capMove)
     if all(not i for i in tempw) or countWhite(board) == 0:
+        # print('Black wins', tempw)
         return 'b'
-    
+
     return False
 
 def check_basic_valid_moves(row, col, board):
@@ -694,11 +778,40 @@ def check_basic_valid_moves(row, col, board):
             return True
         if 0 <= row+1 <= 7 and 0 <= col+1 <= 7 and board[row+1][col+1] == '-':
             return True
-    elif board[row][col].lower() == 'w' or board[row][col] == 'B':
+    if board[row][col].lower() == 'w' or board[row][col] == 'B':
         if 0 <= row-1 <= 7 and 0 <= col-1 <= 7 and board[row-1][col-1] == '-':
             return True
         if 0 <= row-1 <= 7 and 0 <= col+1 <= 7 and board[row-1][col+1] == '-':
             return True
+    return False
+
+def check_basic_capture(row, col, board):
+    if board[row][col] == 'b':
+        if 0 <= row+2 <= 7 and 0 <= col-2 <= 7 and board[row+1][col-1].lower() == 'w' and board[row+2][col-2] == '-':
+            return True
+        if 0 <= row+2 <= 7 and 0 <= col+2 <= 7 and board[row+1][col+1].lower() == 'w' and board[row+2][col+2] == '-':
+            return True
+    if board[row][col] == 'w':
+        if 0 <= row-2 <= 7 and 0 <= col-2 <= 7 and board[row-1][col-1].lower() == 'b' and board[row-2][col-2] == '-':
+            return True
+        if 0 <= row-2 <= 7 and 0 <= col+2 <= 7 and board[row-1][col+1].lower() == 'b' and board[row-2][col+2] == '-':
+            return True
+    if board[row][col] == 'B' or board[row][col] == 'W':
+        directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+        for direction in directions:
+            for i in range(1, 8):
+                checkrow = row + direction[0] * i
+                checkcol = col + direction[1] * i
+                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7:
+                    if board[checkrow][checkcol] == '-':
+                        continue
+                    elif board[checkrow][checkcol].lower() != board[row][col].lower():
+                        if 0 <= checkrow+direction[0] <= 7 and 0 <= checkcol+direction[1] <= 7 and board[checkrow+direction[0]][checkcol+direction[1]] == '-':
+                            return True
+                    else:
+                        break
+                else:
+                    break
     return False
 
 if __name__ == '__main__':

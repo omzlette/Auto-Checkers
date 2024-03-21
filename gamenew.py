@@ -422,33 +422,33 @@ class Player():
                 #         if row > 1 and (col == 0 or col == 7):
                 #             value -= 0.5
 
-                # # King's position (Kings)
-                # directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-                # if board[row][col] == self.botTurn.upper():
-                #     for delta_row, delta_col in directions:
-                #         capture_row, capture_col = row + delta_row, col + delta_col
-                #         descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                #         while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                #             if board[capture_row][capture_col] == self.oppTurn:
-                #                 if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                #                     value += KINGPOSITIONING
-                #             capture_row += delta_row
-                #             capture_col += delta_col
-                #             descent_diag_row += delta_row
-                #             descent_diag_col += delta_col
+                # King's position (Kings)
+                directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+                if board[row][col] == self.botTurn.upper():
+                    for delta_row, delta_col in directions:
+                        capture_row, capture_col = row + delta_row, col + delta_col
+                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                            if board[capture_row][capture_col] == self.oppTurn:
+                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                                    value += KINGPOSITIONING
+                            capture_row += delta_row
+                            capture_col += delta_col
+                            descent_diag_row += delta_row
+                            descent_diag_col += delta_col
 
-                # elif board[row][col] == self.oppTurn.upper():
-                #     for delta_row, delta_col in directions:
-                #         capture_row, capture_col = row + delta_row, col + delta_col
-                #         descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                #         while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                #             if board[capture_row][capture_col] == self.botTurn:
-                #                 if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                #                     value -= KINGPOSITIONING
-                #             capture_row += delta_row
-                #             capture_col += delta_col
-                #             descent_diag_row += delta_row
-                #             descent_diag_col += delta_col
+                elif board[row][col] == self.oppTurn.upper():
+                    for delta_row, delta_col in directions:
+                        capture_row, capture_col = row + delta_row, col + delta_col
+                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
+                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
+                            if board[capture_row][capture_col] == self.botTurn:
+                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
+                                    value -= KINGPOSITIONING
+                            capture_row += delta_row
+                            capture_col += delta_col
+                            descent_diag_row += delta_row
+                            descent_diag_col += delta_col
 
         if is_game_over(board) == self.botTurn:
             value += GAMEOVER
@@ -511,6 +511,7 @@ class Minimax(Player):
             bestPiece = None
             bestMove = None
             movesdict = self.get_all_moves(self.botTurn, board)
+            print(movesdict)
             for piece, moveto in movesdict.items():
                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
                 eval, _, _ = self.minimax(new_board, depth-1, False)

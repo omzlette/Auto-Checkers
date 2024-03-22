@@ -541,8 +541,9 @@ class Minimax(Player):
         ourPieces = countBlack(board) if self.botTurn == 'b' else countWhite(board)
         oppPieces = countWhite(board) if self.botTurn == 'b' else countBlack(board)
 
-        if currCount <= 8:
+        if currCount <= 6 and ourPieces <= 4:
             return max_depth
+
         if not self.increased_depth:
             if (ourPieces <= oppPieces/2 or oppPieces <= ourPieces/2) and (currCount <= 12):
                 self.increased_depth = True

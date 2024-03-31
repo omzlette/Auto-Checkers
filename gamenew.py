@@ -71,11 +71,14 @@ class Checkers:
                     pygame.draw.circle(self.screen, BLACK, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 20)
     
     def debug_text(self):
+        squareCount = 32
         for row in range(rows):
-            for col in range(cols):
-                font = pygame.font.SysFont('Arial', 20)
-                text = font.render(f'{row}, {col}', True, (255, 0, 0))
-                self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
+            for col in range((row % 2)-1, cols, 2):
+                if col != -1:
+                    font = pygame.font.SysFont('Arial', 20)
+                    text = font.render(f'{squareCount}', True, (255, 0, 0))
+                    self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
+                    squareCount -= 1
 
 class Player():
     def __init__(self, turn, board):
@@ -281,7 +284,7 @@ class Player():
     
     def evaluate_board(self, board):
         MANPIECE = 5
-        KINGPIECE = 9
+        KINGPIECE = 10
         KINGROW = 1
         PROMOTEPROTECTION = 1.5
         OTHERROWS = 3
@@ -311,8 +314,8 @@ class Player():
                             value += row
                         elif row == 0 and not (col == 1 or col == 5):
                             value += KINGROW
-                        elif row == 0 and (col == 1 or col == 5):
-                            value += PROMOTEPROTECTION
+                        # elif row == 0 and (col == 1 or col == 5):
+                        #     value += PROMOTEPROTECTION
                         else:
                             value += OTHERROWS
                         # wall penalty
@@ -324,8 +327,8 @@ class Player():
                             value += (7-row)
                         elif row == 7 and not (col == 2 or col == 6):
                             value += KINGROW
-                        elif row == 7 and (col == 2 or col == 6):
-                            value += PROMOTEPROTECTION
+                        # elif row == 7 and (col == 2 or col == 6):
+                        #     value += PROMOTEPROTECTION
                         else:
                             value += OTHERROWS
                         # wall penalty
@@ -337,8 +340,8 @@ class Player():
                             value -= row
                         elif row == 0 and not (col == 1 or col == 5):
                             value -= KINGROW
-                        elif row == 0 and (col == 1 or col == 5):
-                            value -= PROMOTEPROTECTION
+                        # elif row == 0 and (col == 1 or col == 5):
+                        #     value -= PROMOTEPROTECTION
                         else:
                             value -= OTHERROWS
                         # wall penalty
@@ -350,46 +353,46 @@ class Player():
                             value -= (7-row)
                         elif row == 7 and not (col == 2 or col == 6):
                             value -= KINGROW
-                        elif row == 7 and (col == 2 or col == 6):
-                            value -= PROMOTEPROTECTION
+                        # elif row == 7 and (col == 2 or col == 6):
+                        #     value -= PROMOTEPROTECTION
                         else:
                             value -= OTHERROWS
                         # wall penalty
                         if 0 <= row <= 6 and (col == 0 or col == 7):
                             value += WALLPENALTY
 
-                # Evaluate adjacent pieces
-                    directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-                    if self.botTurn == 'b':
-                        if countBlack(board) > 4:
-                            tempBAdjacent = []
-                            for direction in directions:
-                                checkrow = row + direction[0]
-                                checkcol = col + direction[1]
-                                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'b':
-                                    tempBAdjacent.append(True)
-                                else:
-                                    tempBAdjacent.append(False)
-                            for adjacent in tempBAdjacent:
-                                if adjacent:
-                                    value += ADJACENTBONUS
-                                else:
-                                    value -= ADJACENTBONUS
+                # # Evaluate adjacent pieces
+                #     directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+                #     if self.botTurn == 'b':
+                #         if countBlack(board) > 4:
+                #             tempBAdjacent = []
+                #             for direction in directions:
+                #                 checkrow = row + direction[0]
+                #                 checkcol = col + direction[1]
+                #                 if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'b':
+                #                     tempBAdjacent.append(True)
+                #                 else:
+                #                     tempBAdjacent.append(False)
+                #             for adjacent in tempBAdjacent:
+                #                 if adjacent:
+                #                     value += ADJACENTBONUS
+                #                 else:
+                #                     value -= ADJACENTBONUS
 
-                    elif self.botTurn == 'w':
-                        if countWhite(board) > 4:
-                            tempWAdjacent = []
-                            for direction in directions:
-                                checkrow = row + direction[0]
-                                checkcol = col + direction[1]
-                                if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'w':
-                                    tempWAdjacent.append(True)
-                                else:
-                                    tempWAdjacent.append(False)
-                            if any(tempWAdjacent):
-                                value += ADJACENTBONUS
-                            else:
-                                value -= ADJACENTBONUS
+                #     elif self.botTurn == 'w':
+                #         if countWhite(board) > 4:
+                #             tempWAdjacent = []
+                #             for direction in directions:
+                #                 checkrow = row + direction[0]
+                #                 checkcol = col + direction[1]
+                #                 if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'w':
+                #                     tempWAdjacent.append(True)
+                #                 else:
+                #                     tempWAdjacent.append(False)
+                #             if any(tempWAdjacent):
+                #                 value += ADJACENTBONUS
+                #             else:
+                #                 value -= ADJACENTBONUS
 
                 # King's position (Kings)
                 directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
@@ -537,6 +540,7 @@ class Minimax(Player):
             return minEval, bestPiece, bestMove
 
     def increase_depth(self, board, current_depth, max_depth):
+        # Endgame = 8 pieces or less
         currCount = countBlack(board) + countWhite(board)
         ourPieces = countBlack(board) if self.botTurn == 'b' else countWhite(board)
         oppPieces = countWhite(board) if self.botTurn == 'b' else countBlack(board)
@@ -622,6 +626,9 @@ def main():
                 if board.turn == 'b':
                     if player1.user:
                         for event in pygame.event.get():
+                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                                print('Early Exiting...')
+                                running = False
                             if event.type == pygame.MOUSEBUTTONDOWN:
                                 row, col = player1.get_mouse_pos()
                                 board.board, board.turn, board.prevBoard = player1.handle_mouse_click(row, col, board.board)
@@ -638,6 +645,9 @@ def main():
                 elif board.turn == 'w':
                     if player2.user:
                         for event in pygame.event.get():
+                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                                print('Early Exiting...')
+                                running = False
                             if event.type == pygame.MOUSEBUTTONDOWN:
                                 row, col = player2.get_mouse_pos()
                                 board.board, board.turn, board.prevBoard = player2.handle_mouse_click(row, col, board.board)

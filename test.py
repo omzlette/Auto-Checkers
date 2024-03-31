@@ -646,3 +646,13 @@ addtoDict(testDict, 'a', 2)
 addtoDict(testDict, 'b', 3)
 addtoDict(testDict, 'b', 4)
 print(testDict)
+
+def testLoops(rows, cols):
+    squareCount = 32
+    for row in range(rows):
+        for col in range((row % 2)-1, cols, 2):
+            if col != -1:
+                print(row, col, squareCount)
+                squareCount -= 1
+
+testLoops(8, 8)

@@ -586,13 +586,15 @@ def main():
         isGameOver = False
         running = True
         nummoves = 0
-        # player1 = User('b', board.board)
-        # player2 = User('w', board.board)
+
+        player1 = User('b', board.board)
         # player1 = randomBot('b', board.board)
-        player2 = randomBot('w', board.board)
-        player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
-        # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
+        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
         # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
+        
+        # player2 = User('w', board.board)
+        # player2 = randomBot('w', board.board)
+        player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
         # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
         
         while running:
@@ -652,8 +654,8 @@ def main():
                 if board.board != board.prevBoard:
                     nummoves += 1
                     board.prevBoard = copy.deepcopy(board.board)
-                    print('Moves:', nummoves, 'Turn:', board.turn, 'Depth:', player1.depth)
-
+                    print('Moves:', nummoves, 'Turn:', board.turn)
+                    print('Current Depth:', player2.depth)
             # writeData(loop, nummoves, 'data/resource_usage.csv')
 
             for event in pygame.event.get():

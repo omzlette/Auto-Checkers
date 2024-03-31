@@ -3,6 +3,7 @@ from pygame.locals import *
 import numpy as np
 import copy
 import random
+import time
 
 # For recording resource usage
 # import os
@@ -461,8 +462,10 @@ class Minimax(Player):
 
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
+        minimaxTimer = time.time()
         _, bestPiece, bestMove = self.minimax(board, self.depth, True) if not self.ab else self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
-        self.depth = self.increase_depth(board, self.depth, self.max_depth)
+        print('Minimax Time:', time.time() - minimaxTimer)
+        # self.depth = self.increase_depth(board, self.depth, self.max_depth)
         return bestPiece, bestMove
 
     def minimax(self, board, depth, maximizing):

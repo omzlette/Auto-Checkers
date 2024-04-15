@@ -29,6 +29,7 @@ class Checkers:
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption(self.windowsName)
 
+        self.movesDone = {'b': [], 'w': []}
         if board is None:
             self.board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
                           ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
@@ -60,31 +61,39 @@ class Checkers:
     def draw_pieces(self):
         for row in range(rows):
             for col in range(cols):
+                font = pygame.font.SysFont('Arial', 20)
+                text = font.render('K', True, (0, 120, 255))
                 if self.board[row][col] == 'b':
                     pygame.draw.circle(self.screen, BLACK, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 10)
                 elif self.board[row][col] == 'w':
                     pygame.draw.circle(self.screen, WHITE, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 10)
                 elif self.board[row][col] == 'B':
                     pygame.draw.circle(self.screen, BLACK, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 10)
-                    pygame.draw.circle(self.screen, WHITE, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 20)
+                    # pygame.draw.circle(self.screen, WHITE, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 20)
+                    self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
                 elif self.board[row][col] == 'W':
                     pygame.draw.circle(self.screen, WHITE, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 10)
-                    pygame.draw.circle(self.screen, BLACK, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 20)
+                    # pygame.draw.circle(self.screen, BLACK, (col * squareSize + squareSize // 2, row * squareSize + squareSize // 2), squareSize // 2 - 20)
+                    self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
     
     def debug_text(self):
-        squareCount = 32
+        squareCount = 0
         for row in range(rows):
             for col in range((row % 2)-1, cols, 2):
                 if col != -1:
+                    squareCount += 1
                     font = pygame.font.SysFont('Arial', 20)
                     text = font.render(f'{squareCount}', True, (255, 0, 0))
-                    self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
-                    squareCount -= 1
+                    self.screen.blit(text, (col * squareSize + squareSize - text.get_width(), row * squareSize + squareSize - text.get_height()))
+
+    def updateMovesDict(self, piece, move, turn):
+        self.movesDone[turn].append([piece, move])
 
 class Player():
-    def __init__(self, turn, board):
+    def __init__(self, turn, board, movesDone):
         self.turn = turn
         self.board = board
+        self.movesDone = movesDone
         self.prevCount = countBlack(board) if turn == 'b' else countWhite(board)
         self.init_variables()
 
@@ -253,23 +262,28 @@ class Player():
             board[row][col] = 'W'
         return board
     
-    def get_all_moves(self, player, board):
+    def get_all_moves(self, player, board, pieceLoc=None):
         moves = {}
-        mandatory_moves = self.get_mandatory_capture(player, board)
-        if mandatory_moves:
-            for piece in mandatory_moves:
-                moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
+        if pieceLoc is None:
+            mandatory_moves = self.get_mandatory_capture(player, board)
+            if mandatory_moves:
+                for piece in mandatory_moves:
+                    moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
+            else:
+                for row in range(rows):
+                    for col in range(cols):
+                        if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] != []:
+                            moves[(row, col)] = self.get_valid_moves(row, col, board)[0]
         else:
-            for row in range(rows):
-                for col in range(cols):
-                    if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] != []:
-                        moves[(row, col)] = self.get_valid_moves(row, col, board)[0]
+            # Check only passed piece location
+            moves[tuple(pieceLoc)] = self.get_valid_moves(pieceLoc[0], pieceLoc[1], board)[0]
+
         return moves
     
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
-        board, turn, _ = self.move_piece(move, self.turn, board)
-        return board, turn
+        board, turn, prevBoard = self.move_piece(move, self.turn, board)
+        return board, turn, prevBoard
 
     def simulate_game(self, piece, move, turn, board):
         new_board = copy.deepcopy(board)
@@ -284,153 +298,53 @@ class Player():
         return {key: dict[key] for key in keys}
     
     def evaluate_board(self, board):
-        MANPIECE = 5
-        KINGPIECE = 10
-        KINGROW = 1
-        PROMOTEPROTECTION = 1.5
-        OTHERROWS = 3
-        WALLPENALTY = 0.5
-        ADJACENTBONUS = 3
-        GAMEOVER = 100
-        KINGPOSITIONING = 1
-        # piece counting
-        value = 0
+        PIECECOUNT = 100
+        KINGPIECE = 50
+        TRAPPEDKING = 50 # negative points
+        GAMEOVER = 2000
+        DRAW = 0
+
+        ourTurn = self.turn
+        oppTurn = 'w' if self.turn == 'b' else 'b'
+        ourVal = 3 # Starting at 3 for the turn based points
+        oppVal = 0
+
+        kingMoves = {}
+        
         for row in range(rows):
             for col in range(cols):
-                # No. of pieces (each piece = +1 point)
-                if board[row][col] == self.botTurn:
-                    value += MANPIECE
-                elif board[row][col] == self.oppTurn:
-                    value -= MANPIECE
-                # No. of kings (each king = +5 points)
-                if board[row][col] == self.botTurn.upper():
-                    value += KINGPIECE
-                elif board[row][col] == self.oppTurn.upper():
-                    value -= KINGPIECE
-                ### METHOD 1 ###
-                # Each line (Men)
-                if self.botTurn == 'b':
-                    if board[row][col] == self.botTurn:
-                        if 0 < row < 3:
-                            value += row
-                        elif row == 0 and not (col == 1 or col == 5):
-                            value += KINGROW
-                        # elif row == 0 and (col == 1 or col == 5):
-                        #     value += PROMOTEPROTECTION
-                        else:
-                            value += OTHERROWS
-                        # wall penalty
-                        if 0 <= row <= 6 and (col == 0 or col == 7):
-                            value -= WALLPENALTY
-                elif self.botTurn == 'w':
-                    if board[row][col] == self.botTurn:
-                        if 4 < row < 7:
-                            value += (7-row)
-                        elif row == 7 and not (col == 2 or col == 6):
-                            value += KINGROW
-                        # elif row == 7 and (col == 2 or col == 6):
-                        #     value += PROMOTEPROTECTION
-                        else:
-                            value += OTHERROWS
-                        # wall penalty
-                        if 0 <= row <= 6 and (col == 0 or col == 7):
-                            value -= WALLPENALTY
-                elif self.oppTurn == 'b':
-                    if board[row][col] == self.oppTurn:
-                        if 0 < row < 3:
-                            value -= row
-                        elif row == 0 and not (col == 1 or col == 5):
-                            value -= KINGROW
-                        # elif row == 0 and (col == 1 or col == 5):
-                        #     value -= PROMOTEPROTECTION
-                        else:
-                            value -= OTHERROWS
-                        # wall penalty
-                        if 0 <= row <= 6 and (col == 0 or col == 7):
-                            value += WALLPENALTY
-                elif self.oppTurn == 'w':
-                    if board[row][col] == self.oppTurn:
-                        if 4 < row < 7:
-                            value -= (7-row)
-                        elif row == 7 and not (col == 2 or col == 6):
-                            value -= KINGROW
-                        # elif row == 7 and (col == 2 or col == 6):
-                        #     value -= PROMOTEPROTECTION
-                        else:
-                            value -= OTHERROWS
-                        # wall penalty
-                        if 0 <= row <= 6 and (col == 0 or col == 7):
-                            value += WALLPENALTY
+                # No. of pieces
+                if board[row][col].lower() == ourTurn:
+                    ourVal += PIECECOUNT
+                elif board[row][col].lower() == oppTurn:
+                    oppVal += PIECECOUNT
+                # No. of kings and trapped kings (Added on top of pieces)
+                if board[row][col] == ourTurn.upper():
+                    ourVal += KINGPIECE
+                    kingMoves = self.get_all_moves(ourTurn, board, [row, col])
+                    if len(kingMoves[(row, col)]) <= 1:
+                        ourVal -= TRAPPEDKING
+                elif board[row][col] == oppTurn.upper():
+                    oppVal += KINGPIECE
+                    kingMoves = self.get_all_moves(oppTurn, board, [row, col])
+                    if len(kingMoves[(row, col)]) <= 1:
+                        oppVal -= TRAPPEDKING
 
-                # # Evaluate adjacent pieces
-                #     directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-                #     if self.botTurn == 'b':
-                #         if countBlack(board) > 4:
-                #             tempBAdjacent = []
-                #             for direction in directions:
-                #                 checkrow = row + direction[0]
-                #                 checkcol = col + direction[1]
-                #                 if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'b':
-                #                     tempBAdjacent.append(True)
-                #                 else:
-                #                     tempBAdjacent.append(False)
-                #             for adjacent in tempBAdjacent:
-                #                 if adjacent:
-                #                     value += ADJACENTBONUS
-                #                 else:
-                #                     value -= ADJACENTBONUS
 
-                #     elif self.botTurn == 'w':
-                #         if countWhite(board) > 4:
-                #             tempWAdjacent = []
-                #             for direction in directions:
-                #                 checkrow = row + direction[0]
-                #                 checkcol = col + direction[1]
-                #                 if 0 <= checkrow <= 7 and 0 <= checkcol <= 7 and board[checkrow][checkcol] == 'w':
-                #                     tempWAdjacent.append(True)
-                #                 else:
-                #                     tempWAdjacent.append(False)
-                #             if any(tempWAdjacent):
-                #                 value += ADJACENTBONUS
-                #             else:
-                #                 value -= ADJACENTBONUS
 
-                # King's position (Kings)
-                directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-                if board[row][col] == self.botTurn.upper():
-                    for delta_row, delta_col in directions:
-                        capture_row, capture_col = row + delta_row, col + delta_col
-                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                            if board[capture_row][capture_col] == self.oppTurn:
-                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                    value += KINGPOSITIONING
-                            capture_row += delta_row
-                            capture_col += delta_col
-                            descent_diag_row += delta_row
-                            descent_diag_col += delta_col
+        if is_game_over(board) == ourTurn:
+            ourVal += GAMEOVER
+        elif is_game_over(board) == oppTurn:
+            oppVal += GAMEOVER
+        elif is_game_over(board) == 'draw':
+            ourVal += DRAW
+            oppVal += DRAW
 
-                elif board[row][col] == self.oppTurn.upper():
-                    for delta_row, delta_col in directions:
-                        capture_row, capture_col = row + delta_row, col + delta_col
-                        descent_diag_row, descent_diag_col = row - min(row, col), col - min(row, col)
-                        while 0 <= capture_row < 8 and 0 <= capture_col < 8:
-                            if board[capture_row][capture_col] == self.botTurn:
-                                if 0 <= descent_diag_row <= 7 and 0 <= descent_diag_col <= 7 and board[descent_diag_row][descent_diag_col] == ' ':
-                                    value -= KINGPOSITIONING
-                            capture_row += delta_row
-                            capture_col += delta_col
-                            descent_diag_row += delta_row
-                            descent_diag_col += delta_col
-
-        if is_game_over(board) == self.botTurn:
-            value += GAMEOVER
-
-        return value
+        return ourVal - oppVal
 
 class User(Player):
-    def __init__(self, turn, board):
-        super().__init__(turn, board)
+    def __init__(self, turn, board, movesDone):
+        super().__init__(turn, board, movesDone)
         self.user = True
 
     def get_mouse_pos(self):
@@ -441,16 +355,19 @@ class User(Player):
     def handle_mouse_click(self, row, col, board):
         prevBoard = copy.deepcopy(board)
         turn = None
+        selectedPiece = []
         if self.selectedPiece == []:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
             board, turn = board, self.turn
         else:
+            selectedPiece = self.selectedPiece
             board, turn, prevBoard = self.move_piece([row, col], self.turn, board)
-        return board, turn, prevBoard
+        return board, turn, prevBoard, selectedPiece
 
 class Minimax(Player):
-    def __init__(self, turn, depth, max_depth, board, ab = False):
-        super().__init__(turn, board)
+    def __init__(self, turn, depth, max_depth, board, movesDone, ab = False):
+        super().__init__(turn, board, movesDone)
+        self.currTurn = turn
         self.botTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
@@ -469,7 +386,7 @@ class Minimax(Player):
         return bestPiece, bestMove
 
     def minimax(self, board, depth, maximizing):
-        if depth == 0 or is_game_over(board) in ['w', 'b']:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
             return self.evaluate_board(board), None, None
 
         if maximizing:
@@ -505,7 +422,7 @@ class Minimax(Player):
             return minEval, bestPiece, bestMove
 
     def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):
-        if depth == 0 or is_game_over(board) in ['w', 'b']:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
             return self.evaluate_board(board), None, None
         
         if maximizing:
@@ -513,16 +430,17 @@ class Minimax(Player):
             bestPiece = None
             bestMove = None
             movesdict = self.shuffle_dict(self.get_all_moves(self.botTurn, board))
-            for piece, moveto in movesdict.items():
-                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
-                maxEval = max(maxEval, eval)
-                alpha = max(alpha, eval)
-                if beta <= alpha:
-                    break
-                if maxEval == eval:
-                    bestPiece = piece
-                    bestMove = moveto
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
+                    maxEval = max(maxEval, eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+                    if maxEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
             return maxEval, bestPiece, bestMove
         
         else:
@@ -530,16 +448,17 @@ class Minimax(Player):
             bestPiece = None
             bestMove = None
             movesdict = self.shuffle_dict(self.get_all_moves(self.oppTurn, board))
-            for piece, moveto in movesdict.items():
-                new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
-                minEval = min(minEval, eval)
-                beta = min(beta, eval)
-                if beta <= alpha:
-                    break
-                if minEval == eval:
-                    bestPiece = piece
-                    bestMove = moveto
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
+                    minEval = min(minEval, eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+                    if minEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
             return minEval, bestPiece, bestMove
 
     def increase_depth(self, board, current_depth, max_depth):
@@ -576,130 +495,6 @@ class randomBot(Player):
         moveto = random.choice(movesdict[piece])
         return piece, moveto
 
-def main():
-    # time.sleep(10)
-    # t_end = time.time() + (60 * 10)
-    # while time.time() < t_end:
-    #     writeData(None, None, 'data/idle_resource.csv')
-    #     time.sleep(2)
-    
-    # loops = 20
-    # for loop in range(loops):
-        # filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
-
-        board = Checkers()
-        INITIAL_DEPTH = 5
-        MAX_DEPTH = 10
-        isGameOver = False
-        running = True
-        nummoves = 0
-
-        player1 = User('b', board.board)
-        # player1 = randomBot('b', board.board)
-        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
-        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
-        
-        # player2 = User('w', board.board)
-        # player2 = randomBot('w', board.board)
-        player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
-        # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
-        
-        while running:
-            # for event in pygame.event.get():
-            #     print('Game running')
-            #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-            #         running = False
-            #         print('Early Exiting...')
-
-            isGameOver = is_game_over(board.board)
-            if isGameOver in ['b', 'w']:
-                # print(countBlack(board.board), countWhite(board.board))
-                # running = False
-                # print('Game Over, Winner:', 'Black' if isGameOver == 'b' else 'White')
-                pass
-                # winnerData(loop, isGameOver, filename)
-
-            board.screen.fill(BROWN)
-            board.draw_board()
-            board.draw_pieces()
-            board.debug_text()
-            pygame.display.flip()
-
-            if not isGameOver:
-                if board.turn == 'b':
-                    if player1.user:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                                print('Early Exiting...')
-                                running = False
-                            if event.type == pygame.MOUSEBUTTONDOWN:
-                                row, col = player1.get_mouse_pos()
-                                board.board, board.turn, board.prevBoard = player1.handle_mouse_click(row, col, board.board)
-                                player1.turn = board.turn
-                                player2.turn = board.turn
-                    else:
-                        bestPiece, bestMove = player1.play(board.board)
-                        if bestPiece is not None and bestMove is not None:
-                            player1.prevCount = countBlack(board.board) + countWhite(board.board)
-                            board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
-                            player1.turn = board.turn
-                            player2.turn = board.turn
-                    
-                elif board.turn == 'w':
-                    if player2.user:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                                print('Early Exiting...')
-                                running = False
-                            if event.type == pygame.MOUSEBUTTONDOWN:
-                                row, col = player2.get_mouse_pos()
-                                board.board, board.turn, board.prevBoard = player2.handle_mouse_click(row, col, board.board)
-                                player1.turn = board.turn
-                                player2.turn = board.turn
-                    else:
-                        bestPiece, bestMove = player2.play(board.board)
-                        if bestPiece is not None and bestMove is not None:
-                            player2.prevCount = countBlack(board.board) + countWhite(board.board)
-                            board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)
-                            player1.turn = board.turn
-                            player2.turn = board.turn
-
-                if board.board != board.prevBoard:
-                    nummoves += 1
-                    board.prevBoard = copy.deepcopy(board.board)
-                    print('Moves:', nummoves, 'Turn:', board.turn)
-                    print('Current Depth:', player2.depth)
-            # writeData(loop, nummoves, 'data/resource_usage.csv')
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    running = False
-                    if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
-                        print('Game Over, Winner: Black')
-                        # winnerData(loop, 'b', filename)
-                    elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
-                        print('Game Over, Winner: White')
-                        # winnerData(loop, 'w', filename)
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                    print('Restarting...')
-                    main()
-        pygame.quit()
-
-# def winnerData(loop, winner, filename='winner.csv'):
-#     if os.path.isfile(filename):
-#         df = pd.read_csv(filename)
-#     else:
-#         df = pd.DataFrame(columns=['Game', 'Winner'])
-#     pd.concat([df, pd.DataFrame([[loop, winner]], columns=['Game', 'Winner'])]).to_csv(filename, index=False)
-
-# def writeData(loopcount, nummoves, filename='resource_usage.csv'):
-#     if os.path.isfile(filename):
-#         df = pd.read_csv(filename)
-#     else:
-#         df = pd.DataFrame(columns=['CPU', 'GPU', 'RAM', 'Moves', 'Loop'])
-#     with jtop() as jetson:
-#         pd.concat([df, pd.DataFrame([[psutil.cpu_percent(), jetson.stats['GPU'], psutil.virtual_memory()[3]/1e+9, nummoves, loopcount]], columns=['CPU', 'GPU', 'RAM', 'Moves', 'Loop'])]).to_csv(filename, index=False)
-
 def countBlack(board):
     count = 0
     for row in range(rows):
@@ -716,10 +511,33 @@ def countWhite(board):
                 count += 1
     return count
 
-def is_game_over(board):
+def countKings(board):
+    whiteKings = 0
+    blackKings = 0
+    for row in range(rows):
+        for col in range(cols):
+            if board[row][col] == 'B':
+                blackKings += 1
+            elif board[row][col] == 'W':
+                whiteKings += 1
+    return whiteKings, blackKings
+
+def is_game_over(board, movesDone):
     tempb = []
     tempbmove = []
     tempbcap = []
+
+    tempw = []
+    tempwmove = []
+    tempwcap = []
+
+    blackCount = countBlack(board)
+    whiteCount = countWhite(board)
+    whiteKing, blackKing = countKings(board)
+
+    blackMoveCount = len(movesDone['b'])
+    whiteMoveCount = len(movesDone['w'])
+    totalMoveCount = len(movesDone['b']) + len(movesDone['w'])
 
     xb = np.char.lower(np.array(board)) == 'b'
     pieceloclist = np.asarray(np.where(xb)).T.tolist()
@@ -732,9 +550,6 @@ def is_game_over(board):
         # print('White wins', tempb, tempbmove, tempbcap)
         return 'w'
 
-    tempw = []
-    tempwmove = []
-    tempwcap = []
     xw = np.char.lower(np.array(board)) == 'w'
     pieceloclist = np.asarray(np.where(xw)).T.tolist()
     for pieceloc in pieceloclist:
@@ -745,6 +560,28 @@ def is_game_over(board):
     if all(not i for i in tempw) or countWhite(board) == 0:
         # print('Black wins', tempw)
         return 'b'
+
+    if (blackCount == 1 and blackKing == 1) and\
+       (whiteCount == 1 and whiteKing == 1) and\
+       all(not i for i in tempbcap) and\
+       all(not i for i in tempwcap):
+        # with only 1 king each w/o any forced captures, the game should be considered a draw
+        return 'draw'
+    
+    if blackMoveCount == 40 or whiteMoveCount == 40:
+        # In the internaitonal rules, if a player makes 40 moves without a capture or a king, the game is a draw
+        if blackCount + whiteCount == 24:
+            return 'draw'
+        if whiteKing + blackKing == 0:
+            return 'draw'
+
+    if totalMoveCount >= 12:
+        # If the last 3 moves are the same, the game is a draw
+        if movesDone['b'][-1] == movesDone['b'][-3] == movesDone['b'][-5] and\
+           movesDone['w'][-1] == movesDone['w'][-3] == movesDone['w'][-5] and\
+           movesDone['b'][-2] == movesDone['b'][-4] == movesDone['b'][-6] and\
+           movesDone['w'][-2] == movesDone['w'][-4] == movesDone['w'][-6]:
+            return 'draw'
 
     return False
 
@@ -789,6 +626,120 @@ def check_basic_capture(row, col, board):
                 else:
                     break
     return False
+
+def main():
+    # time.sleep(10)
+    # t_end = time.time() + (60 * 10)
+    # while time.time() < t_end:
+    #     writeData(None, None, 'data/idle_resource.csv')
+    #     time.sleep(2)
+    
+    # loops = 20
+    # for loop in range(loops):
+        # filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
+
+        board = Checkers()
+        INITIAL_DEPTH = 5
+        MAX_DEPTH = 10
+        isGameOver = False
+        running = True
+        nummoves = 0
+
+        player1 = User('b', board.board)
+        # player1 = randomBot('b', board.board)
+        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
+        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
+        
+        # player2 = User('w', board.board)
+        # player2 = randomBot('w', board.board)
+        # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
+        player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
+        
+        while running:
+            # for event in pygame.event.get():
+            #     print('Game running')
+            #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            #         running = False
+            #         print('Early Exiting...')
+
+            isGameOver = is_game_over(board.board)
+            if isGameOver in ['b', 'w']:
+                # print(countBlack(board.board), countWhite(board.board))
+                # running = False
+                # print('Game Over, Winner:', 'Black' if isGameOver == 'b' else 'White')
+                pass
+                # winnerData(loop, isGameOver, filename)
+
+            board.screen.fill(BROWN)
+            board.draw_board()
+            board.draw_pieces()
+            board.debug_text()
+            pygame.display.flip()
+
+            if not isGameOver:
+                if board.turn == 'b':
+                    if player1.user:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                                print('Early Exiting...')
+                                running = False
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                row, col = player1.get_mouse_pos()
+                                board.board, board.turn, board.prevBoard, selectedPiece = player1.handle_mouse_click(row, col, board.board)
+                                player1.turn = board.turn
+                                player2.turn = board.turn
+                    else:
+                        bestPiece, bestMove = player1.play(board.board)
+                        if bestPiece is not None and bestMove is not None:
+                            player1.prevCount = countBlack(board.board) + countWhite(board.board)
+                            board.board, board.turn, board.prevBoard = player1.update_board(board.board, bestPiece, bestMove)
+                            player1.turn = board.turn
+                            player2.turn = board.turn
+                    
+                elif board.turn == 'w':
+                    if player2.user:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                                print('Early Exiting...')
+                                running = False
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                row, col = player2.get_mouse_pos()
+                                board.board, board.turn, board.prevBoard, selectedPiece = player2.handle_mouse_click(row, col, board.board)
+                                player1.turn = board.turn
+                                player2.turn = board.turn
+                    else:
+                        bestPiece, bestMove = player2.play(board.board)
+                        if bestPiece is not None and bestMove is not None:
+                            player2.prevCount = countBlack(board.board) + countWhite(board.board)
+                            board.board, board.turn, board.prevBoard = player2.update_board(board.board, bestPiece, bestMove)
+                            player1.turn = board.turn
+                            player2.turn = board.turn
+
+                if board.board != board.prevBoard:
+                    nummoves += 1
+                    board.prevBoard = copy.deepcopy(board.board)
+                    if board.turn == 'w':
+                        board.updateMovesDict(tuple(selectedPiece), (row, col), 'b')
+                    else:
+                        board.updateMovesDict(tuple(bestPiece), tuple(bestMove), 'w')
+                    print('Moves Done:', board.movesDone)
+                    print('Moves:', nummoves, 'Turn:', board.turn)
+                    print('Current Depth:', player2.depth)
+            # writeData(loop, nummoves, 'data/resource_usage.csv')
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    running = False
+                    if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
+                        print('Game Over, Winner: Black')
+                        # winnerData(loop, 'b', filename)
+                    elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
+                        print('Game Over, Winner: White')
+                        # winnerData(loop, 'w', filename)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    print('Restarting...')
+                    main()
+        pygame.quit()
 
 if __name__ == '__main__':
     main()

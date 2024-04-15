@@ -301,6 +301,7 @@ class Player():
         PIECECOUNT = 100
         KINGPIECE = 50
         TRAPPEDKING = 50 # negative points
+        DOGHOLE = 10
         GAMEOVER = 2000
         DRAW = 0
 
@@ -330,7 +331,12 @@ class Player():
                     if len(kingMoves[(row, col)]) <= 1:
                         oppVal -= TRAPPEDKING
 
-
+        # Dog-Hole (putting ourselves in a dog hole is no good)
+        # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
+        if board[7][6].lower() == 'w' and board[6][7].lower() == 'b':
+            ourVal -= 10
+        if board[0][1].lower() == 'b' and board[1][0].lower() == 'w':
+            oppVal -= 10
 
         if is_game_over(board) == ourTurn:
             ourVal += GAMEOVER
@@ -482,7 +488,6 @@ class Minimax(Player):
                 self.increased_depth = False
 
         return current_depth
-
 
 class randomBot(Player):
     def __init__(self, turn, board):

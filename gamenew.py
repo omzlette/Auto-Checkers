@@ -291,19 +291,43 @@ class Player():
         new_board, _, _ = self.move_piece(move, turn, new_board)
         self.init_variables()
         return new_board
-    
-    def shuffle_dict(self, dict):
-        keys = list(dict.keys())
-        np.random.shuffle(keys)
-        return {key: dict[key] for key in keys}
+
+    def runawayCheckers(self, board, piece):
+        # Check if the piece has a path of becoming a king
+        blackDirections = [[1, -1], [1, 1]]
+        whiteDirections = [[-1, -1], [-1, 1]]
+
+        pieceRow = piece[0]
+        pieceCol = piece[1]
+        pieceColor = board[pieceRow][pieceCol].lower()
+        moveList = []
+
+        for dir in blackDirections if pieceColor == 'b' else whiteDirections:
+            checkRow, checkCol = pieceRow + dir[0], pieceCol + dir[1]
+            if 0 <= checkRow <= 7 and 0 <= checkCol <= 7 and board[checkRow][checkCol] == '-':
+                tempBoard = copy.deepcopy(board)
+                tempBoard[pieceRow][pieceCol], tempBoard[checkRow][checkCol] = '-', pieceColor
+                moveList = self.runawayCheckers(tempBoard, (checkRow, checkCol))
+                moveList.append((checkRow, checkCol))
+
+        return moveList[::-1]
     
     def evaluate_board(self, board):
         PIECECOUNT = 100
         KINGPIECE = 50
         TRAPPEDKING = 50 # negative points
         DOGHOLE = 10
+        BACKRANK = 20
         GAMEOVER = 2000
         DRAW = 0
+
+        totalPieces = 0
+        for row in range(rows):
+            totalPieces += sum(list(map(lambda x: True if x.lower() in ['b', 'w'] else False, board[row])))
+
+        # Multiplier for making the bot favor more pieces
+        # if totalPieces < 8:
+        #     MULTIPLIER = 5/6
 
         ourTurn = self.turn
         oppTurn = 'w' if self.turn == 'b' else 'b'
@@ -331,18 +355,47 @@ class Player():
                     if len(kingMoves[(row, col)]) <= 1:
                         oppVal -= TRAPPEDKING
 
+                # Runaway Checkers
+                # If the bot has a path to become a king, it's better for the bot
+                if board[row][col] == ourTurn and row >= 4:
+                    runaway = self.runawayCheckers(board, [row, col])
+                    numMovestoKing = 7 - row
+                    if len(runaway) == numMovestoKing and numMovestoKing > 0:
+                        ourVal += KINGPIECE - (numMovestoKing * 3)
+                elif board[row][col] == oppTurn and row <= 3:
+                    runaway = self.runawayCheckers(board, [row, col])
+                    numMovestoKing = row
+                    if len(runaway) == numMovestoKing and numMovestoKing > 0:
+                        oppVal += KINGPIECE - (numMovestoKing * 3)
+
+
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
         if board[7][6].lower() == 'w' and board[6][7].lower() == 'b':
-            ourVal -= 10
+            ourVal -= DOGHOLE
         if board[0][1].lower() == 'b' and board[1][0].lower() == 'w':
-            oppVal -= 10
+            oppVal -= DOGHOLE
 
-        if is_game_over(board) == ourTurn:
+        # Back Rank (making the other side getting a king is better)
+        # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
+        # +20 to the blocker
+        backrankB = list(map(lambda x: True if x.lower() == 'b' else False, board[0]))
+        backrankW = list(map(lambda x: True if x.lower() == 'w' else False, board[7]))
+        
+        backrankBCount = sum(backrankB)
+        backrankWCount = sum(backrankW)
+
+        if backrankBCount > backrankWCount:
+            ourVal += BACKRANK
+        elif backrankWCount > backrankBCount:
+            oppVal += BACKRANK        
+
+        # Win/Lose/Draw
+        if is_game_over(board, self.movesDone) == ourTurn:
             ourVal += GAMEOVER
-        elif is_game_over(board) == oppTurn:
+        elif is_game_over(board, self.movesDone) == oppTurn:
             oppVal += GAMEOVER
-        elif is_game_over(board) == 'draw':
+        elif is_game_over(board, self.movesDone) == 'draw':
             ourVal += DRAW
             oppVal += DRAW
 
@@ -371,7 +424,7 @@ class User(Player):
         return board, turn, prevBoard, selectedPiece
 
 class Minimax(Player):
-    def __init__(self, turn, depth, max_depth, board, movesDone, ab = False):
+    def __init__(self, turn, depth, max_depth, board, movesDone):
         super().__init__(turn, board, movesDone)
         self.currTurn = turn
         self.botTurn = 'b' if turn == 'b' else 'w'
@@ -381,12 +434,11 @@ class Minimax(Player):
         self.init_depth = depth
         self.depth = depth
         self.max_depth = max_depth
-        self.ab = ab
 
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
         minimaxTimer = time.time()
-        _, bestPiece, bestMove = self.minimax(board, self.depth, True) if not self.ab else self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
+        _, bestPiece, bestMove = self.minimax(board, self.depth, True)
         print('Minimax Time:', time.time() - minimaxTimer)
         # self.depth = self.increase_depth(board, self.depth, self.max_depth)
         return bestPiece, bestMove
@@ -427,46 +479,6 @@ class Minimax(Player):
 
             return minEval, bestPiece, bestMove
 
-    def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
-            return self.evaluate_board(board), None, None
-        
-        if maximizing:
-            maxEval = -np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.shuffle_dict(self.get_all_moves(self.botTurn, board))
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
-                    maxEval = max(maxEval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
-                    if maxEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
-            return maxEval, bestPiece, bestMove
-        
-        else:
-            minEval = np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.shuffle_dict(self.get_all_moves(self.oppTurn, board))
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
-                    minEval = min(minEval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
-                    if minEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
-            return minEval, bestPiece, bestMove
-
     def increase_depth(self, board, current_depth, max_depth):
         # Endgame = 8 pieces or less
         currCount = countBlack(board) + countWhite(board)
@@ -489,10 +501,78 @@ class Minimax(Player):
 
         return current_depth
 
+class AlphaBeta(Minimax):
+    def __init__(self, turn, depth, board, movesDone):
+        super().__init__(turn, depth, board, movesDone)
+
+    def play(self, board):
+        self.prevCount = countBlack(board) + countWhite(board)
+        minimaxTimer = time.time()
+        _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
+        print('Minimax Time:', time.time() - minimaxTimer)
+        # self.depth = self.increase_depth(board, self.depth, self.max_depth)
+        return bestPiece, bestMove
+
+    def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
+            return self.evaluate_board(board), None, None
+
+        if maximizing:
+            maxEval = -np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.botTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
+                    maxEval = max(maxEval, eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+                    if maxEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
+
+            return maxEval, bestPiece, bestMove
+        
+        else:
+            minEval = np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.oppTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
+                    minEval = min(minEval, eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+                    if minEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
+
+            return minEval, bestPiece, bestMove
+        
+    #Zobrist Hashing
+    def randInt(self):
+        return random.randint(0, 2**64 - 1)
+
+    def initTable(self):
+        table = [[[self.randInt() for i in range(4)] for j in range(8)] for k in range(8)]
+        return table
+
+
 class randomBot(Player):
     def __init__(self, turn, board):
         super().__init__(turn, board)
         self.user = False
+
+    def shuffle_dict(self, dict):
+        keys = list(dict.keys())
+        np.random.shuffle(keys)
+        return {key: dict[key] for key in keys}
 
     def play(self, board):
         movesdict = self.shuffle_dict(self.get_all_moves(self.turn, board))
@@ -633,118 +713,95 @@ def check_basic_capture(row, col, board):
     return False
 
 def main():
-    # time.sleep(10)
-    # t_end = time.time() + (60 * 10)
-    # while time.time() < t_end:
-    #     writeData(None, None, 'data/idle_resource.csv')
-    #     time.sleep(2)
+    INITIAL_DEPTH = 5
+    isGameOver = False
+    running = True
+    nummoves = 0
+
+    board = Checkers()
+
+    player1 = User('b', board.board, board.movesDone)
+    # player1 = randomBot('b', board.board, board.movesDone)
+    # player1 = Minimax('b', INITIAL_DEPTH, board.board, board.movesDone)
+    # player1 = AlphaBeta('b', INITIAL_DEPTH, board.board, board.movesDone)
     
-    # loops = 20
-    # for loop in range(loops):
-        # filename = f'data/random/winner_experiment_random_mm{depth2}.csv'
+    # player2 = User('w', board.board, board.movesDone)
+    # player2 = randomBot('w', board.board, board.movesDone)
+    # player2 = Minimax('w', INITIAL_DEPTH, board.board, board.movesDone)
+    player2 = AlphaBeta('w', INITIAL_DEPTH, board.board, board.movesDone)
+    
+    while running:
+        isGameOver = is_game_over(board.board, board.movesDone)
 
-        board = Checkers()
-        INITIAL_DEPTH = 5
-        MAX_DEPTH = 10
-        isGameOver = False
-        running = True
-        nummoves = 0
+        board.screen.fill(BROWN)
+        board.draw_board()
+        board.draw_pieces()
+        board.debug_text()
+        pygame.display.flip()
 
-        player1 = User('b', board.board)
-        # player1 = randomBot('b', board.board)
-        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board)
-        # player1 = Minimax('b', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
-        
-        # player2 = User('w', board.board)
-        # player2 = randomBot('w', board.board)
-        # player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board)
-        player2 = Minimax('w', INITIAL_DEPTH, MAX_DEPTH, board.board, ab=True)
-        
-        while running:
-            # for event in pygame.event.get():
-            #     print('Game running')
-            #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-            #         running = False
-            #         print('Early Exiting...')
-
-            isGameOver = is_game_over(board.board)
-            if isGameOver in ['b', 'w']:
-                # print(countBlack(board.board), countWhite(board.board))
-                # running = False
-                # print('Game Over, Winner:', 'Black' if isGameOver == 'b' else 'White')
-                pass
-                # winnerData(loop, isGameOver, filename)
-
-            board.screen.fill(BROWN)
-            board.draw_board()
-            board.draw_pieces()
-            board.debug_text()
-            pygame.display.flip()
-
-            if not isGameOver:
-                if board.turn == 'b':
-                    if player1.user:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                                print('Early Exiting...')
-                                running = False
-                            if event.type == pygame.MOUSEBUTTONDOWN:
-                                row, col = player1.get_mouse_pos()
-                                board.board, board.turn, board.prevBoard, selectedPiece = player1.handle_mouse_click(row, col, board.board)
-                                player1.turn = board.turn
-                                player2.turn = board.turn
-                    else:
-                        bestPiece, bestMove = player1.play(board.board)
-                        if bestPiece is not None and bestMove is not None:
-                            player1.prevCount = countBlack(board.board) + countWhite(board.board)
-                            board.board, board.turn, board.prevBoard = player1.update_board(board.board, bestPiece, bestMove)
+        if not isGameOver:
+            if board.turn == 'b':
+                if player1.user:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                            print('Early Exiting...')
+                            running = False
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            row, col = player1.get_mouse_pos()
+                            board.board, board.turn, board.prevBoard, selectedPiece = player1.handle_mouse_click(row, col, board.board)
                             player1.turn = board.turn
                             player2.turn = board.turn
-                    
-                elif board.turn == 'w':
-                    if player2.user:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                                print('Early Exiting...')
-                                running = False
-                            if event.type == pygame.MOUSEBUTTONDOWN:
-                                row, col = player2.get_mouse_pos()
-                                board.board, board.turn, board.prevBoard, selectedPiece = player2.handle_mouse_click(row, col, board.board)
-                                player1.turn = board.turn
-                                player2.turn = board.turn
-                    else:
-                        bestPiece, bestMove = player2.play(board.board)
-                        if bestPiece is not None and bestMove is not None:
-                            player2.prevCount = countBlack(board.board) + countWhite(board.board)
-                            board.board, board.turn, board.prevBoard = player2.update_board(board.board, bestPiece, bestMove)
+                else:
+                    bestPiece, bestMove = player1.play(board.board)
+                    if bestPiece is not None and bestMove is not None:
+                        player1.prevCount = countBlack(board.board) + countWhite(board.board)
+                        board.board, board.turn, board.prevBoard = player1.update_board(board.board, bestPiece, bestMove)
+                        player1.turn = board.turn
+                        player2.turn = board.turn
+                
+            elif board.turn == 'w':
+                if player2.user:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                            print('Early Exiting...')
+                            running = False
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            row, col = player2.get_mouse_pos()
+                            board.board, board.turn, board.prevBoard, selectedPiece = player2.handle_mouse_click(row, col, board.board)
                             player1.turn = board.turn
                             player2.turn = board.turn
+                else:
+                    bestPiece, bestMove = player2.play(board.board)
+                    if bestPiece is not None and bestMove is not None:
+                        player2.prevCount = countBlack(board.board) + countWhite(board.board)
+                        board.board, board.turn, board.prevBoard = player2.update_board(board.board, bestPiece, bestMove)
+                        player1.turn = board.turn
+                        player2.turn = board.turn
 
-                if board.board != board.prevBoard:
-                    nummoves += 1
-                    board.prevBoard = copy.deepcopy(board.board)
-                    if board.turn == 'w':
-                        board.updateMovesDict(tuple(selectedPiece), (row, col), 'b')
-                    else:
-                        board.updateMovesDict(tuple(bestPiece), tuple(bestMove), 'w')
-                    print('Moves Done:', board.movesDone)
-                    print('Moves:', nummoves, 'Turn:', board.turn)
-                    print('Current Depth:', player2.depth)
-            # writeData(loop, nummoves, 'data/resource_usage.csv')
+            if board.board != board.prevBoard:
+                nummoves += 1
+                board.prevBoard = copy.deepcopy(board.board)
+                if board.turn == 'w':
+                    board.updateMovesDict(tuple(selectedPiece), (row, col), 'b')
+                else:
+                    board.updateMovesDict(tuple(bestPiece), tuple(bestMove), 'w')
+                print('Moves Done:', board.movesDone)
+                print('Moves:', nummoves, 'Turn:', board.turn)
+                print('Current Depth:', player2.depth)
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    running = False
-                    if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
-                        print('Game Over, Winner: Black')
-                        # winnerData(loop, 'b', filename)
-                    elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
-                        print('Game Over, Winner: White')
-                        # winnerData(loop, 'w', filename)
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                    print('Restarting...')
-                    main()
-        pygame.quit()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                running = False
+                if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
+                    print('Game Over, Winner: Black')
+                    # winnerData(loop, 'b', filename)
+                elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
+                    print('Game Over, Winner: White')
+                    # winnerData(loop, 'w', filename)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                print('Restarting...')
+                main()
+    pygame.quit()
 
 if __name__ == '__main__':
     main()

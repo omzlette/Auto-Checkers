@@ -138,7 +138,6 @@ class Player():
         return selectedPiece, validMoves, capturePos
     
     def move_piece(self, moveto, turn, board):
-        prevBoard = copy.deepcopy(board)
         [rowMove, colMove] = moveto
         if self.validMoves is not None and [rowMove, colMove] in self.validMoves:
             self.prevMove = [rowMove, colMove]
@@ -157,7 +156,7 @@ class Player():
                 turn = 'w' if turn == 'b' else 'b'
         else:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(rowMove, colMove, turn, board)
-        return board, turn, prevBoard
+        return board, turn
 
     def get_valid_moves(self, row, col, board):
         moves = []
@@ -282,13 +281,13 @@ class Player():
     
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
-        board, turn, prevBoard = self.move_piece(move, self.turn, board)
-        return board, turn, prevBoard
+        board, turn = self.move_piece(move, self.turn, board)
+        return board, turn
 
     def simulate_game(self, piece, move, turn, board):
         new_board = copy.deepcopy(board)
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
-        new_board, _, _ = self.move_piece(move, turn, new_board)
+        new_board, _ = self.move_piece(move, turn, new_board)
         self.init_variables()
         return new_board
 
@@ -412,7 +411,6 @@ class User(Player):
         return row, col
     
     def handle_mouse_click(self, row, col, board):
-        prevBoard = copy.deepcopy(board)
         turn = None
         selectedPiece = []
         if self.selectedPiece == []:
@@ -420,10 +418,10 @@ class User(Player):
             board, turn = board, self.turn
         else:
             selectedPiece = self.selectedPiece
-            board, turn, prevBoard = self.move_piece([row, col], self.turn, board)
-        return board, turn, prevBoard, selectedPiece
+            board, turn = self.move_piece([row, col], self.turn, board)
+        return board, turn, selectedPiece
 
-class Minimax(Player):
+class Negamax(Player):
     def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, board, movesDone)
         self.currTurn = turn
@@ -440,42 +438,6 @@ class Minimax(Player):
         bestValue, bestPiece, bestMove = self.negamax(board, self.depth)
         print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
         return bestPiece, bestMove
-
-    # def minimax(self, board, depth, maximizing):
-    #     if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
-    #         return self.evaluate_board(board), None, None
-
-    #     if maximizing:
-    #         maxEval = -np.inf
-    #         bestPiece = None
-    #         bestMove = None
-    #         movesdict = self.get_all_moves(self.botTurn, board)
-    #         for piece, movetolist in movesdict.items():
-    #             for moveto in movetolist:
-    #                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-    #                 eval, _, _ = self.minimax(new_board, depth-1, False)
-    #                 maxEval = max(maxEval, eval)
-    #                 if maxEval == eval:
-    #                     bestPiece = piece
-    #                     bestMove = moveto
-
-    #         return maxEval, bestPiece, bestMove
-        
-    #     else:
-    #         minEval = np.inf
-    #         bestPiece = None
-    #         bestMove = None
-    #         movesdict = self.get_all_moves(self.oppTurn, board)
-    #         for piece, movetolist in movesdict.items():
-    #             for moveto in movetolist:
-    #                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-    #                 eval, _, _ = self.minimax(new_board, depth-1, True)
-    #                 minEval = min(minEval, eval)
-    #                 if minEval == eval:
-    #                     bestPiece = piece
-    #                     bestMove = moveto
-
-    #         return minEval, bestPiece, bestMove
         
     def negamax(self, board, depth):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
@@ -497,7 +459,7 @@ class Minimax(Player):
 
         return maxEval, bestPiece, bestMove
 
-class AlphaBeta(Minimax):
+class AlphaBeta(Negamax):
     def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, depth, board, movesDone)
         self.zobristtable = self.initTable()
@@ -510,36 +472,6 @@ class AlphaBeta(Minimax):
         print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
         return bestPiece, bestMove
 
-    def alphaBeta(self, board, depth, alpha, beta):
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
-            return self.evaluate_board(board), None, None
-
-        # transposition = self.probeTransposition(board)
-        # if transposition is not None and transposition['depth'] >= depth:
-        #     # Checking for saved depth higher or equal to current depth
-        #     # because higher depth means more accurate evaluation
-        #     if transposition['flag'] == 0:
-        #         pass
-                
-        maxEval = -np.inf
-        bestPiece = None
-        bestMove = None
-        movesdict = self.get_all_moves(self.botTurn, board)
-        for piece, movetolist in movesdict.items():
-            for moveto in movetolist:
-                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.alphaBeta(new_board, depth-1, -beta, -alpha)
-                eval = -eval
-                maxEval = max(maxEval, eval)
-                if maxEval >= beta:
-                    break
-                if maxEval > alpha:
-                    alpha = maxEval
-                    bestPiece = piece
-                    bestMove = moveto
-
-        return maxEval, bestPiece, bestMove
-    
     def iterativeDeepening(self, board):
         bestPiece = None
         bestMove = None
@@ -556,6 +488,50 @@ class AlphaBeta(Minimax):
             bestMove = move
             depth += 1
         return bestValue, bestPiece, bestMove
+
+    def alphaBeta(self, board, depth, alpha, beta):
+        maxEval = -np.inf
+        bestPiece = None
+        bestMove = None
+        movesdict = self.get_all_moves(self.botTurn, board)
+
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
+            return self.evaluate_board(board), None, None
+
+        transposition = self.probeTransposition(board)
+        if transposition is not None and transposition['depth'] >= depth:
+            # Checking for saved depth higher or equal to current depth
+            # because higher depth means more accurate evaluation
+            if transposition['value'] > transposition['beta']:
+                # Lower Bound, fails high, Alpha is the lower bound
+                # Fail high means there exists a better move, meaning it's > beta
+                # Updating alpha to ensure that we won't prune moves that are better
+                alpha = max(alpha, transposition['value'])
+            elif transposition['value'] < transposition['alpha']:
+                # Upper Bound, fails low, Beta is the upper bound
+                # Fail low means there exists no moves that can make it > alpha
+                # Updating beta to ensure that we won't explore moves that are worse
+                beta = min(beta, transposition['value'])
+            else:
+                # Exact Value
+                return transposition['value'], None, None
+        
+        for piece, movetolist in movesdict.items():
+            for moveto in movetolist:
+                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                eval, _, _ = self.alphaBeta(new_board, depth-1, -beta, -alpha)
+                eval = -eval
+                maxEval = max(maxEval, eval)
+                if maxEval >= beta:
+                    break
+                if maxEval > alpha:
+                    alpha = maxEval
+                    bestPiece = piece
+                    bestMove = moveto
+
+        self.storeTransposition(board, depth, maxEval, alpha, beta)
+
+        return maxEval, bestPiece, bestMove
             
     def squareMapping(self, square):
         squareMapping = { 1: (0, 1),  2: (0, 3),  3: (0, 5),  4: (0, 7),
@@ -608,15 +584,14 @@ class AlphaBeta(Minimax):
             for col in range(cols):
                 piece = board[row][col]
                 if piece != '-':
-                    square = self.get_square(row, col)
+                    squareIDX = self.get_square(row, col) - 1 # -1 because the square starts from 1
                     pieceIndex = self.pieceIndices(piece)
-                    hash ^= zobristtableCopy[square][pieceIndex]
+                    hash ^= zobristtableCopy[squareIDX][pieceIndex]
         return hash
     
-    def storeTransposition(self, board, depth, value, alpha, beta, flag):
+    def storeTransposition(self, board, depth, value, alpha, beta):
         hash = self.hashBoard(board, self.zobristtable)
-        # Flag: 0 = exact, 1 = lowerbound, 2 = upperbound
-        self.hashtable[hash] = {'depth': depth, 'value': value, 'alpha': alpha,'beta': beta, 'flag': flag}
+        self.hashtable[hash] = {'depth': depth, 'value': value, 'alpha': alpha,'beta': beta}
 
     def probeTransposition(self, board):
         hash = self.hashBoard(board, self.zobristtable)
@@ -782,12 +757,12 @@ def main():
 
     player1 = User('b', board.board, board.movesDone)
     # player1 = randomBot('b', board.board, board.movesDone)
-    # player1 = Minimax('b', INITIAL_DEPTH, board.board, board.movesDone)
+    # player1 = Negamax('b', INITIAL_DEPTH, board.board, board.movesDone)
     # player1 = AlphaBeta('b', INITIAL_DEPTH, board.board, board.movesDone)
     
     # player2 = User('w', board.board, board.movesDone)
     # player2 = randomBot('w', board.board, board.movesDone)
-    # player2 = Minimax('w', INITIAL_DEPTH, board.board, board.movesDone)
+    # player2 = Negamax('w', INITIAL_DEPTH, board.board, board.movesDone)
     player2 = AlphaBeta('w', INITIAL_DEPTH, board.board, board.movesDone)
     
     while running:
@@ -808,14 +783,14 @@ def main():
                             running = False
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             row, col = player1.get_mouse_pos()
-                            board.board, board.turn, board.prevBoard, selectedPiece = player1.handle_mouse_click(row, col, board.board)
+                            board.board, board.turn, selectedPiece = player1.handle_mouse_click(row, col, board.board)
                             player1.turn = board.turn
                             player2.turn = board.turn
                 else:
                     bestPiece, bestMove = player1.play(board.board)
                     if bestPiece is not None and bestMove is not None:
                         player1.prevCount = countBlack(board.board) + countWhite(board.board)
-                        board.board, board.turn, board.prevBoard = player1.update_board(board.board, bestPiece, bestMove)
+                        board.board, board.turn = player1.update_board(board.board, bestPiece, bestMove)
                         player1.turn = board.turn
                         player2.turn = board.turn
                 
@@ -827,16 +802,17 @@ def main():
                             running = False
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             row, col = player2.get_mouse_pos()
-                            board.board, board.turn, board.prevBoard, selectedPiece = player2.handle_mouse_click(row, col, board.board)
+                            board.board, board.turn, selectedPiece = player2.handle_mouse_click(row, col, board.board)
                             player1.turn = board.turn
                             player2.turn = board.turn
                 else:
                     bestPiece, bestMove = player2.play(board.board)
                     if bestPiece is not None and bestMove is not None:
                         player2.prevCount = countBlack(board.board) + countWhite(board.board)
-                        board.board, board.turn, board.prevBoard = player2.update_board(board.board, bestPiece, bestMove)
+                        board.board, board.turn = player2.update_board(board.board, bestPiece, bestMove)
                         player1.turn = board.turn
                         player2.turn = board.turn
+
 
             if board.board != board.prevBoard:
                 nummoves += 1

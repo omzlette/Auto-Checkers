@@ -421,7 +421,7 @@ class User(Player):
             board, turn = self.move_piece([row, col], self.turn, board)
         return board, turn, selectedPiece
 
-class Negamax(Player):
+class Minimax(Player):
     def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, board, movesDone)
         self.currTurn = turn
@@ -435,31 +435,47 @@ class Negamax(Player):
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
         minimaxTimer = time.time()
-        bestValue, bestPiece, bestMove = self.negamax(board, self.depth)
+        bestValue, bestPiece, bestMove = self.minimax(board, self.depth, True)
         print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
         return bestPiece, bestMove
         
-    def negamax(self, board, depth):
+    def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
             return self.evaluate_board(board), None, None
 
-        maxEval = -np.inf
-        bestPiece = None
-        bestMove = None
-        movesdict = self.get_all_moves(self.botTurn, board)
-        for piece, movetolist in movesdict.items():
-            for moveto in movetolist:
-                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.negamax(new_board, depth-1)
-                eval = -eval
-                maxEval = max(maxEval, eval)
-                if maxEval == eval:
-                    bestPiece = piece
-                    bestMove = moveto
+        if maximizing:
+            maxEval = -np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.botTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                    eval, _, _ = self.minimax(new_board, depth-1, False)
+                    maxEval = max(maxEval, eval)
+                    if maxEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
 
-        return maxEval, bestPiece, bestMove
+            return maxEval, bestPiece, bestMove
+        
+        else:
+            minEval = np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.oppTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                    eval, _, _ = self.minimax(new_board, depth-1, True)
+                    minEval = min(minEval, eval)
+                    if minEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
 
-class AlphaBeta(Negamax):
+            return minEval, bestPiece, bestMove
+
+class AlphaBeta(Minimax):
     def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, depth, board, movesDone)
         self.zobristtable = self.initTable()
@@ -480,7 +496,7 @@ class AlphaBeta(Negamax):
         timer = time.time()
         while time.time() - timer < 30:
             print('Depth:', depth)
-            value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf)
+            value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
             if value == np.inf:
                 break
             bestValue = value
@@ -489,7 +505,7 @@ class AlphaBeta(Negamax):
             depth += 1
         return bestValue, bestPiece, bestMove
 
-    def alphaBeta(self, board, depth, alpha, beta):
+    def alphaBeta(self, board, depth, alpha, beta, maximizing):
         maxEval = -np.inf
         bestPiece = None
         bestMove = None
@@ -516,22 +532,45 @@ class AlphaBeta(Negamax):
                 # Exact Value
                 return transposition['value'], None, None
         
-        for piece, movetolist in movesdict.items():
-            for moveto in movetolist:
-                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                eval, _, _ = self.alphaBeta(new_board, depth-1, -beta, -alpha)
-                eval = -eval
-                maxEval = max(maxEval, eval)
-                if maxEval >= beta:
-                    break
-                if maxEval > alpha:
-                    alpha = maxEval
-                    bestPiece = piece
-                    bestMove = moveto
+        if maximizing:
+            maxEval = -np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.botTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                    eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, False)
+                    maxEval = max(maxEval, eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+                    if maxEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
+            
+            self.storeTransposition(board, depth, maxEval, alpha, beta)
+            return maxEval, bestPiece, bestMove
+        
+        else:
+            minEval = np.inf
+            bestPiece = None
+            bestMove = None
+            movesdict = self.get_all_moves(self.oppTurn, board)
+            for piece, movetolist in movesdict.items():
+                for moveto in movetolist:
+                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                    eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, True)
+                    minEval = min(minEval, eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+                    if minEval == eval:
+                        bestPiece = piece
+                        bestMove = moveto
 
-        self.storeTransposition(board, depth, maxEval, alpha, beta)
-
-        return maxEval, bestPiece, bestMove
+            self.storeTransposition(board, depth, minEval, alpha, beta)
+            return minEval, bestPiece, bestMove
             
     def squareMapping(self, square):
         squareMapping = { 1: (0, 1),  2: (0, 3),  3: (0, 5),  4: (0, 7),

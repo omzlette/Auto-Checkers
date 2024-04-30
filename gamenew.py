@@ -424,7 +424,7 @@ class User(Player):
         return board, turn, prevBoard, selectedPiece
 
 class Minimax(Player):
-    def __init__(self, turn, depth, max_depth, board, movesDone):
+    def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, board, movesDone)
         self.currTurn = turn
         self.botTurn = 'b' if turn == 'b' else 'w'
@@ -433,136 +433,196 @@ class Minimax(Player):
         self.increased_depth = False
         self.init_depth = depth
         self.depth = depth
-        self.max_depth = max_depth
 
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
         minimaxTimer = time.time()
-        _, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        print('Minimax Time:', time.time() - minimaxTimer)
-        # self.depth = self.increase_depth(board, self.depth, self.max_depth)
+        bestValue, bestPiece, bestMove = self.negamax(board, self.depth)
+        print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
         return bestPiece, bestMove
 
-    def minimax(self, board, depth, maximizing):
+    # def minimax(self, board, depth, maximizing):
+    #     if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
+    #         return self.evaluate_board(board), None, None
+
+    #     if maximizing:
+    #         maxEval = -np.inf
+    #         bestPiece = None
+    #         bestMove = None
+    #         movesdict = self.get_all_moves(self.botTurn, board)
+    #         for piece, movetolist in movesdict.items():
+    #             for moveto in movetolist:
+    #                 new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+    #                 eval, _, _ = self.minimax(new_board, depth-1, False)
+    #                 maxEval = max(maxEval, eval)
+    #                 if maxEval == eval:
+    #                     bestPiece = piece
+    #                     bestMove = moveto
+
+    #         return maxEval, bestPiece, bestMove
+        
+    #     else:
+    #         minEval = np.inf
+    #         bestPiece = None
+    #         bestMove = None
+    #         movesdict = self.get_all_moves(self.oppTurn, board)
+    #         for piece, movetolist in movesdict.items():
+    #             for moveto in movetolist:
+    #                 new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+    #                 eval, _, _ = self.minimax(new_board, depth-1, True)
+    #                 minEval = min(minEval, eval)
+    #                 if minEval == eval:
+    #                     bestPiece = piece
+    #                     bestMove = moveto
+
+    #         return minEval, bestPiece, bestMove
+        
+    def negamax(self, board, depth):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
             return self.evaluate_board(board), None, None
 
-        if maximizing:
-            maxEval = -np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.get_all_moves(self.botTurn, board)
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                    eval, _, _ = self.minimax(new_board, depth-1, False)
-                    maxEval = max(maxEval, eval)
-                    if maxEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
+        maxEval = -np.inf
+        bestPiece = None
+        bestMove = None
+        movesdict = self.get_all_moves(self.botTurn, board)
+        for piece, movetolist in movesdict.items():
+            for moveto in movetolist:
+                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                eval, _, _ = self.negamax(new_board, depth-1)
+                eval = -eval
+                maxEval = max(maxEval, eval)
+                if maxEval == eval:
+                    bestPiece = piece
+                    bestMove = moveto
 
-            return maxEval, bestPiece, bestMove
-        
-        else:
-            minEval = np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.get_all_moves(self.oppTurn, board)
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                    eval, _, _ = self.minimax(new_board, depth-1, True)
-                    minEval = min(minEval, eval)
-                    if minEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
-
-            return minEval, bestPiece, bestMove
-
-    def increase_depth(self, board, current_depth, max_depth):
-        # Endgame = 8 pieces or less
-        currCount = countBlack(board) + countWhite(board)
-        ourPieces = countBlack(board) if self.botTurn == 'b' else countWhite(board)
-        oppPieces = countWhite(board) if self.botTurn == 'b' else countBlack(board)
-
-        if currCount <= 6 and ourPieces <= 4:
-            return max_depth
-
-        if not self.increased_depth:
-            if (ourPieces <= oppPieces/2 or oppPieces <= ourPieces/2) and (currCount <= 12):
-                self.increased_depth = True
-                return current_depth + 1 if current_depth < max_depth else max_depth
-            elif ourPieces <= 6 or oppPieces <= 6 and currCount <= 10:
-                self.increased_depth = True
-                return current_depth + 1 if current_depth < max_depth else max_depth
-        else:
-            if self.prevCount != currCount:
-                self.increased_depth = False
-
-        return current_depth
+        return maxEval, bestPiece, bestMove
 
 class AlphaBeta(Minimax):
     def __init__(self, turn, depth, board, movesDone):
         super().__init__(turn, depth, board, movesDone)
+        self.zobristtable = self.initTable()
+        self.hashtable = {}
 
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
         minimaxTimer = time.time()
-        _, bestPiece, bestMove = self.minimaxAlphaBeta(board, self.depth, -np.inf, np.inf, True)
-        print('Minimax Time:', time.time() - minimaxTimer)
-        # self.depth = self.increase_depth(board, self.depth, self.max_depth)
+        bestValue, bestPiece, bestMove = self.iterativeDeepening(board)
+        print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
         return bestPiece, bestMove
 
-    def minimaxAlphaBeta(self, board, depth, alpha, beta, maximizing):
+    def alphaBeta(self, board, depth, alpha, beta):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
             return self.evaluate_board(board), None, None
 
-        if maximizing:
-            maxEval = -np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.get_all_moves(self.botTurn, board)
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
-                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, False)
-                    maxEval = max(maxEval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
-                    if maxEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
+        # transposition = self.probeTransposition(board)
+        # if transposition is not None and transposition['depth'] >= depth:
+        #     # Checking for saved depth higher or equal to current depth
+        #     # because higher depth means more accurate evaluation
+        #     if transposition['flag'] == 0:
+        #         pass
+                
+        maxEval = -np.inf
+        bestPiece = None
+        bestMove = None
+        movesdict = self.get_all_moves(self.botTurn, board)
+        for piece, movetolist in movesdict.items():
+            for moveto in movetolist:
+                new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                eval, _, _ = self.alphaBeta(new_board, depth-1, -beta, -alpha)
+                eval = -eval
+                maxEval = max(maxEval, eval)
+                if maxEval >= beta:
+                    break
+                if maxEval > alpha:
+                    alpha = maxEval
+                    bestPiece = piece
+                    bestMove = moveto
 
-            return maxEval, bestPiece, bestMove
-        
-        else:
-            minEval = np.inf
-            bestPiece = None
-            bestMove = None
-            movesdict = self.get_all_moves(self.oppTurn, board)
-            for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
-                    eval, _, _ = self.minimaxAlphaBeta(new_board, depth-1, alpha, beta, True)
-                    minEval = min(minEval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
-                    if minEval == eval:
-                        bestPiece = piece
-                        bestMove = moveto
+        return maxEval, bestPiece, bestMove
+    
+    def iterativeDeepening(self, board):
+        bestPiece = None
+        bestMove = None
+        bestValue = -np.inf
+        depth = 2 # Skipping depth 1 because depth 1 moves only 1 step
+        timer = time.time()
+        while time.time() - timer < 30:
+            print('Depth:', depth)
+            value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf)
+            if value == np.inf:
+                break
+            bestValue = value
+            bestPiece = piece
+            bestMove = move
+            depth += 1
+        return bestValue, bestPiece, bestMove
+            
+    def squareMapping(self, square):
+        squareMapping = { 1: (0, 1),  2: (0, 3),  3: (0, 5),  4: (0, 7),
+                          5: (1, 0),  6: (1, 2),  7: (1, 4),  8: (1, 6),
+                          9: (2, 1), 10: (2, 3), 11: (2, 5), 12: (2, 7),
+                         13: (3, 0), 14: (3, 2), 15: (3, 4), 16: (3, 6),
+                         17: (4, 1), 18: (4, 3), 19: (4, 5), 20: (4, 7),
+                         21: (5, 0), 22: (5, 2), 23: (5, 4), 24: (5, 6),
+                         25: (6, 1), 26: (6, 3), 27: (6, 5), 28: (6, 7),
+                         29: (7, 0), 30: (7, 2), 31: (7, 4), 32: (7, 6)}
+        row = squareMapping[square][0]
+        col = squareMapping[square][1]
+        return row, col
+    
+    def get_square(self, row, col):
+        squareMapping = {(0, 1): 1, (0, 3): 2, (0, 5): 3, (0, 7): 4,
+                         (1, 0): 5, (1, 2): 6, (1, 4): 7, (1, 6): 8,
+                         (2, 1): 9, (2, 3): 10, (2, 5): 11, (2, 7): 12,
+                         (3, 0): 13, (3, 2): 14, (3, 4): 15, (3, 6): 16,
+                         (4, 1): 17, (4, 3): 18, (4, 5): 19, (4, 7): 20,
+                         (5, 0): 21, (5, 2): 22, (5, 4): 23, (5, 6): 24,
+                         (6, 1): 25, (6, 3): 26, (6, 5): 27, (6, 7): 28,
+                         (7, 0): 29, (7, 2): 30, (7, 4): 31, (7, 6): 32}
+        return squareMapping[(row, col)]
 
-            return minEval, bestPiece, bestMove
-        
     #Zobrist Hashing
     def randInt(self):
-        return random.randint(0, 2**64 - 1)
+        return random.getrandbits(64)
+
+    def pieceIndices(self, piece):
+        if piece == 'b':
+            return 0
+        elif piece == 'w':
+            return 1
+        elif piece == 'B':
+            return 2
+        elif piece == 'W':
+            return 3
+        else:
+            return -1
 
     def initTable(self):
-        table = [[[self.randInt() for i in range(4)] for j in range(8)] for k in range(8)]
+        table = [[self.randInt() for i in range(4)] for j in range(32)]
         return table
+    
+    def hashBoard(self, board, zobristtable):
+        hash = 0
+        zobristtableCopy = copy.deepcopy(zobristtable)
+        for row in range(rows):
+            for col in range(cols):
+                piece = board[row][col]
+                if piece != '-':
+                    square = self.get_square(row, col)
+                    pieceIndex = self.pieceIndices(piece)
+                    hash ^= zobristtableCopy[square][pieceIndex]
+        return hash
+    
+    def storeTransposition(self, board, depth, value, alpha, beta, flag):
+        hash = self.hashBoard(board, self.zobristtable)
+        # Flag: 0 = exact, 1 = lowerbound, 2 = upperbound
+        self.hashtable[hash] = {'depth': depth, 'value': value, 'alpha': alpha,'beta': beta, 'flag': flag}
 
+    def probeTransposition(self, board):
+        hash = self.hashBoard(board, self.zobristtable)
+        if hash in self.hashtable:
+            return self.hashtable[hash]
+        return None
 
 class randomBot(Player):
     def __init__(self, turn, board):
@@ -787,7 +847,6 @@ def main():
                     board.updateMovesDict(tuple(bestPiece), tuple(bestMove), 'w')
                 print('Moves Done:', board.movesDone)
                 print('Moves:', nummoves, 'Turn:', board.turn)
-                print('Current Depth:', player2.depth)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):

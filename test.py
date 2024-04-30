@@ -840,4 +840,15 @@ print(initTable())
 #     print(row)
 
 # print("The old hash value is : " + str(hashValue))
+board_size = 8
 
+index_to_coordinates = {
+    i + 1: (i // board_size, (i % board_size) * 2 + (i // board_size) % 2)
+    for i in range(board_size * board_size)
+}
+
+# Print the dictionary with formatted output
+for index, coordinates in index_to_coordinates.items():
+    print(f"{index}: {coordinates}, ", end="")
+    if index % 4 == 0:
+        print()

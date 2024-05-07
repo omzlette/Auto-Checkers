@@ -483,9 +483,7 @@ class AlphaBeta(Minimax):
 
     def play(self, board):
         self.prevCount = countBlack(board) + countWhite(board)
-        minimaxTimer = time.time()
-        bestValue, bestPiece, bestMove = self.iterativeDeepening(board)
-        print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
+        _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
 
     def iterativeDeepening(self, board):
@@ -495,7 +493,7 @@ class AlphaBeta(Minimax):
         depth = 2 # Skipping depth 1 because depth 1 moves only 1 step
         timer = time.time()
         while time.time() - timer < 30:
-            print('Depth:', depth)
+            print('Depth:', depth, 'Time:', time.time() - timer)
             value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
             if value == np.inf:
                 break
@@ -613,7 +611,7 @@ class AlphaBeta(Minimax):
             return -1
 
     def initTable(self):
-        table = [[self.randInt() for i in range(4)] for j in range(32)]
+        table = [[self.randInt() for _ in range(4)] for _ in range(32)]
         return table
     
     def hashBoard(self, board, zobristtable):

@@ -80,29 +80,18 @@ def astar(maze, start, end):
 
 
 def main():
-    maze = [[0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],]
+    maze = [[0 for i in range(15)] for j in range(15)]
 
-    start = (0, 0)
-    end = (maze[len(maze)-1][len(maze[len(maze)-1])-1] - 1, maze[len(maze)-1][len(maze[len(maze)-1])-1] - 1)
+    print(f"Dimensions of maze: {len(maze)}x{len(maze[0])}")
 
-    path = astar(maze, start, end)
-    print(path)
+    # path = astar(maze, start, end)
+    # print(path)
 
-    for i in range(len(path)):
-        maze[path[i][0]][path[i][1]] = 2
+    # for i in range(len(path)):
+    #     maze[path[i][0]][path[i][1]] = 2
 
-    for i in range(len(maze)):
-        print(maze[i])
+    # for i in range(len(maze)):
+    #     print(maze[i])
 
 if __name__ == '__main__':
     main()

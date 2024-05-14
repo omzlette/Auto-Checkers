@@ -78,20 +78,42 @@ def astar(maze, start, end):
 
             open_list.append(child)
 
+def mapping(board, start, end):
+    maze = [[0 for i in range(15)] for j in range(15)]
+    
+    mappedStart = (start[0]*2, start[1]*2) # change from 8x8 to 15x15
+    mappedEnd = (end[0]*2, end[1]*2)
+    
+    # change from 8x8 to 15x15
+    for i in range(8):
+        for j in range(8):
+            maze[i*2][j*2] = 1 if board[i][j] in ['b', 'w'] else 0
+
+    return maze, mappedStart, mappedEnd
 
 def main():
-    maze = [[0 for i in range(15)] for j in range(15)]
+    # Board will be changed to checkers board from main.py
+    board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
+            ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
+            ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+    
+    maze, start, end = mapping(board, (1, 0), (2, 1))
 
     print(f"Dimensions of maze: {len(maze)}x{len(maze[0])}")
 
-    # path = astar(maze, start, end)
-    # print(path)
+    path = astar(maze, start, end)
+    print(path)
 
-    # for i in range(len(path)):
-    #     maze[path[i][0]][path[i][1]] = 2
+    for i in range(len(path)):
+        maze[path[i][0]][path[i][1]] = 2
 
-    # for i in range(len(maze)):
-    #     print(maze[i])
+    for i in range(len(maze)):
+        print(maze[i])
 
 if __name__ == '__main__':
     main()

@@ -2,12 +2,41 @@ import pygame
 from pygame.locals import *
 from checkers import *
 from player import *
+import pyserial
 
 def main():
     INITIAL_DEPTH = 5
     isGameOver = False
     running = True
     nummoves = 0
+
+    """
+    INIT
+        (Arduino -> Jetson) 1. Get the board state from Arduino via USB
+        (Jetson)            2. Match the board state with the current initial board state
+
+        if board state is not matched:
+        (Jetson -> Arduino) 3. Send the serial command to Arduino to show reset request message (LEDs)
+        
+    PLAY
+        **Player moves first (Black)
+        1. Get the board state from Arduino via USB (Get every x seconds)
+        2. Match the board state with the current board state
+        3. Decode which piece moved and where it moved
+
+        if the move is valid:
+        4. Update the board state
+        5. AI's turn (White)
+
+        if the move is invalid:
+        4. Send the serial command to Arduino to show invalid move message (LEDs)
+        5. Wait for the player to make a valid move
+
+        6. Play until the game is over
+        
+    """
+
+
 
     board = Checkers()
 

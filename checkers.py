@@ -7,7 +7,7 @@ BLACK = (0, 0, 0)
 BROWN = (133, 84, 49)
 LIGHT_BROWN = (252, 230, 215)
 
-width, height = 400, 400
+width, height = 800, 800
 rows, cols = 8, 8
 squareSize = width // rows
 

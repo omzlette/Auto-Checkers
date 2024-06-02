@@ -4,10 +4,11 @@ import numpy as np
 import copy
 import random
 import time
+import checkers
 
-width, height = 400, 400
-rows, cols = 8, 8
-squareSize = width // rows
+width, height = checkers.width, checkers.height
+rows, cols = checkers.rows, checkers.cols
+squareSize = checkers.squareSize
 
 class Player():
     def __init__(self, turn, board, movesDone):

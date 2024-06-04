@@ -4,34 +4,13 @@ from checkers import *
 from player import *
 import serial
 import time
+import cv2 as cv
+import numpy as np
+import pyautogui
+from PIL import ImageGrab
+import copy
 
 def main():
-    """
-    INIT
-        (Arduino -> Jetson) 1. Get the board state from Arduino via USB
-        (Jetson)            2. Match the board state with the current initial board state
-
-        if board state is not matched:
-        (Jetson -> Arduino) 3. Send the serial command to Arduino to show reset request message (LEDs)
-        
-    PLAY
-        **Player moves first (Black)
-        1. Get the board state from Arduino via USB (Get every x seconds)
-        2. Match the board state with the current board state
-        3. Decode which piece moved and where it moved
-
-        if the move is valid:
-        4. Update the board state
-        5. AI's turn (White)
-
-        if the move is invalid:
-        4. Send the serial command to Arduino to show invalid move message (LEDs)
-        5. Wait for the player to make a valid move
-
-        6. Play until the game is over
-        
-    """
-
     board = Checkers()
 
     player1 = User('b', board.board, board.movesDone)
@@ -48,7 +27,74 @@ def main():
     running = True
     nummoves = 0
     
+    pickerwindowBG = np.zeros((300, 512, 3), np.uint8)
+
+    numGames = 0
+    startedFlag = False
+
     while running:
+        if startedFlag == False:
+            print("Game started")
+            startedFlag = True
+            turn, prevBoard, bot, our = initGame(numGames)
+
+        screen = ImageGrab.grab(all_screens=True)
+        # print(f"Resolution: {screen.size}, Mode: {screen.mode}, Format: {screen.format}")
+
+        # screen right : (1920, 0, 3840, 1080)
+        # screen left : (0, 0, 1920, 1080)
+
+        screen = screen.crop((1920, 0, 3840, 1080))
+        screen = np.array(screen)
+
+        screen_binary = convert_to_binary(screen)
+        ret, corners = detect_checkers_board(screen)
+        screen = cv.cvtColor(screen, cv.COLOR_BGR2RGB)
+
+        if ret:
+            print("Checkers board detected")
+            screen_binary = cv.cvtColor(screen_binary, cv.COLOR_GRAY2RGB)
+
+            # get the pieces
+            pieces = detect_pieces(screen_binary, corners)
+            print(len(pieces), pieces)
+            for piece in pieces:
+                x, y, w, h = piece
+                cv.rectangle(screen_binary, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            
+            # update board state
+            newBoard, sorted_pieces = update_board_state(screen_binary, corners)
+            if turn == bot:
+                selected, move = getMove(prevBoard, newBoard)
+
+            screen_binary = crop_board(screen_binary, corners)
+            
+            cv.imshow('screen_binary', screen_binary)
+        else:
+            print("Checkers board not detected")
+            # check game end
+            endimg = cv.imread('end.png')
+            matchinfo = match_images(screen, endimg)
+            loc, w, h = matchinfo
+            if loc[0].size > 0:
+                print("Game ended")
+                for pt in zip(*loc[::-1]):
+                    cv.rectangle(screen, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+                
+                # reset the board
+                pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
+                pyautogui.click()
+                numGames += 1
+                startedFlag = False
+
+            else:
+                print("Game not ended")
+        # show screen
+        cv.imshow('screen', screen)
+
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+
         isGameOver = is_game_over(board.board, board.movesDone)
 
         board.screen.fill(BROWN)

@@ -60,16 +60,6 @@ def main():
         if not isGameOver:
             if board.turn == 'b':
                 if player1.user:
-                    # for event in pygame.event.get():
-                    #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    #         print('Early Exiting...')
-                    #         running = False
-                    #     if event.type == pygame.MOUSEBUTTONDOWN:
-                    #         row, col = player1.get_mouse_pos()
-                    #         board.board, board.turn, selectedPiece = player1.handle_mouse_click(row, col, board.board)
-                    #         player1.turn = board.turn
-                    #         player2.turn = board.turn
-
                     row, col = getMove(prevBoard, newBoard)
                     board.board, board.turn = player1.update_board(board.board, row, col)
                     player1.turn = board.turn
@@ -85,16 +75,6 @@ def main():
                 
             elif board.turn == 'w':
                 if player2.user:
-                    # for event in pygame.event.get():
-                    #     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    #         print('Early Exiting...')
-                    #         running = False
-                    #     if event.type == pygame.MOUSEBUTTONDOWN:
-                    #         row, col = player2.get_mouse_pos()
-                    #         board.board, board.turn, selectedPiece = player2.handle_mouse_click(row, col, board.board)
-                    #         player1.turn = board.turn
-                    #         player2.turn = board.turn
-
                     row, col = getMove(prevBoard, newBoard)
                     board.board, board.turn = player2.update_board(board.board, row, col)
                     player1.turn = board.turn

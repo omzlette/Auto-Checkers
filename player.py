@@ -343,25 +343,45 @@ class User(Player):
         return board, turn, selectedPiece
 
 class Minimax(Player):
-    def __init__(self, turn, depth, board, movesDone):
+    def __init__(self, turn, board, movesDone):
         super().__init__(turn, board, movesDone)
-        self.currTurn = turn
         self.botTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
-        self.increased_depth = False
-        self.init_depth = depth
-        self.depth = depth
+        self.timer = 0
+        self.timeLimit = 30
+
+    def iterativeDeepening(self, board):
+        bestPiece = None
+        bestMove = None
+        bestValue = -np.inf
+        depth = 1
+        self.timer = time.time()
+        while True:
+            if time.time() - self.timer > self.timeLimit: break
+            value, piece, move = self.minimax(board, depth, True)
+            print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
+            if value > bestValue:
+                bestValue = value
+                bestPiece = piece
+                bestMove = move
+            if value >= 2000:
+                # If the bot wins, return the move
+                bestValue = value
+                bestPiece = piece
+                bestMove = move
+                break
+            depth += 1
+        print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
+        return bestValue, bestPiece, bestMove
 
     def play(self, board):
-        self.prevCount = countBlack(board) + countWhite(board)
-        minimaxTimer = time.time()
-        bestValue, bestPiece, bestMove = self.minimax(board, self.depth, True)
-        print('Minimax Time:', time.time() - minimaxTimer, 'Value:', bestValue)
+        # self.prevCount = countBlack(board) + countWhite(board)
+        _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
         
     def minimax(self, board, depth, maximizing):
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer > self.timeLimit:
             return self.evaluate_board(board), None, None
 
         if maximizing:
@@ -397,8 +417,8 @@ class Minimax(Player):
             return minEval, bestPiece, bestMove
 
 class AlphaBeta(Minimax):
-    def __init__(self, turn, depth, board, movesDone):
-        super().__init__(turn, depth, board, movesDone)
+    def __init__(self, turn, board, movesDone):
+        super().__init__(turn, board, movesDone)
         self.zobristtable = self.initTable()
         self.hashtable = {}
 
@@ -411,19 +431,24 @@ class AlphaBeta(Minimax):
         bestPiece = None
         bestMove = None
         bestValue = -np.inf
-        depth = 2 # Skipping depth 1 because depth 1 moves only 1 step
-        timer = time.time()
-        while time.time() - timer < 30:
+        depth = 1
+        self.timer = time.time()
+        while True:
+            if time.time() - self.timer > self.timeLimit: break
             value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
-            print('Depth:', depth, 'Time:', time.time() - timer, f'Value: {value} Piece: {piece} Move: {move}')
-            bestValue = value
-            bestPiece = piece
-            bestMove = move
-            depth += 1
+            print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
+            if value >= bestValue:
+                bestValue = value
+                bestPiece = piece
+                bestMove = move
             if value >= 2000:
                 # If the bot wins, return the move
+                bestValue = value
+                bestPiece = piece
+                bestMove = move
                 break
-        print(f'Time taken: {time.time() - timer} seconds, Depth: {depth-1}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
+            depth += 1
+        print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
         return bestValue, bestPiece, bestMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):
@@ -432,7 +457,7 @@ class AlphaBeta(Minimax):
         bestMove = None
         movesdict = self.get_all_moves(self.botTurn, board)
 
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b']:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer >= self.timeLimit:
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -518,6 +543,12 @@ class AlphaBeta(Minimax):
         return squareMapping[(row, col)]
 
     #Zobrist Hashing
+
+    # How it works
+    # 1. Create a table of random numbers for each piece in each square
+    # 2. XOR the random number of the piece in the square
+    # 3. When a move is made, XOR the random number of the piece in the square
+
     def randInt(self):
         return random.getrandbits(64)
 

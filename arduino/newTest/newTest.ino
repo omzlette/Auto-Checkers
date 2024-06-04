@@ -146,9 +146,7 @@ void loop() {
   //   stepper2.run();
 
   // }
-  // // if(startFlag){
-  // //   debug();
-  // // }
+
   if(Started){
     stepper1.moveTo(moveHere);
     stepper1.run();
@@ -157,14 +155,19 @@ void loop() {
       while(micros() - delayTime < 1 * 1e+6){
         digitalWrite(31, HIGH);
       }
-      digitalWrite(31, LOW);
-      moveHere = 0;
-      startFlag = false;
-      Started = false;
+      if(moveHere == 0 && stepper1.distanceToGo() == 0){
+        digitalWrite(DRV1_EN, LOW);
+        digitalWrite(DRV2_EN, LOW);
+        digitalWrite(31, LOW);
+        startFlag = false;
+        Started = false;
+      }
+      else{
+        moveHere = 0;
+      }
     }
   }
 
-  // debug();
 }
 
 void debug(){
@@ -201,6 +204,7 @@ void initPins(){
 
   pinMode(BUTTON, INPUT_PULLUP);
   pinMode(31, OUTPUT); digitalWrite(31, LOW);
+  pinMode(33, OUTPUT); digitalWrite(33, LOW);
 }
 
 void getMUXValue() {

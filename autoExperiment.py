@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import pyautogui
 from PIL import ImageGrab
+import copy
 
 def convert_to_binary(image):
     hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
@@ -119,28 +120,20 @@ def match_images(img, template):
     return loc
 
 def getMove(prevBoard, newBoard):
-    # get the index of the changed squares
-    prevBoardState = np.where(prevBoard != 0, 1, 0)
-    for row in prevBoardState:
-        print(row)
-    changed = np.where(prevBoardState != newBoard)
-    # get the number of changed squares
-    if changed is not None:
-        changed = list(zip(changed[0], changed[1]))
-        if len(changed) == 2:
-            # get the selected square
-            selected = (changed[0][0], changed[0][1])
-            pieceType = prevBoard[selected[0]][selected[1]]
-            # check if the piece is a king
-            if pieceType == 1 and changed[1][0] == 7:
-                pieceType = 3
-            elif pieceType == 2 and changed[1][0] == 0:
-                pieceType = 4
-            # get the moved square
-            move = (changed[1][0], changed[1][1])
-            return selected, move, pieceType
-        
-    return None, None, None
+    for row in range(8):
+        for col in range(8):
+            # print(prevBoard[row][col], newBoard[row][col], row, col)
+            if prevBoard[row][col] != 0 and newBoard[row][col] == 0:
+                selected = (row, col)
+                pieceType = prevBoard[row][col]
+                if pieceType == 1 and row == 7:
+                    pieceType = 3
+                elif pieceType == 2 and row == 0:
+                    pieceType = 4
+            if prevBoard[row][col] == 0 and newBoard[row][col] != 0:
+                move = (row, col)
+
+    return selected, move, pieceType
 
 def getBoardState(boardimg, corners):
     pieces = detect_pieces(boardimg, corners)
@@ -160,7 +153,7 @@ def getBoardState(boardimg, corners):
     return board, sorted_pieces
 
 def update_board_state(prevBoard, currBoard):
-    updated_board = [row[:] for row in prevBoard]
+    updated_board = copy.deepcopy(prevBoard)
 
     for row in range(8):
         for col in range(8):
@@ -212,18 +205,15 @@ def main():
                           [0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 1, 0],
-                          [0, 1, 0, 1, 0, 1, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 1, 0, 1, 0, 1, 0, 1],
                           [1, 0, 1, 0, 1, 0, 1, 0]])
 
-    selected, move, pieceType = getMove(prevBoard, currBoard)
-    print(selected, move, pieceType)
+    updated_board = update_board_state(prevBoard, currBoard)
 
-    # updated_board = update_board_state(prevBoard, currBoard)
-
-    # print("Updated board")
-    # for row in updated_board:
-    #     print(row)
+    print("Updated board")
+    for row in updated_board:
+        print(row)
 
 if __name__ == '__main__':
     main()

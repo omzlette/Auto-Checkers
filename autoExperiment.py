@@ -5,6 +5,7 @@ from PIL import ImageGrab
 import copy
 import serial
 import time
+import os
 
 def convert_to_binary(image):
     hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
@@ -213,6 +214,8 @@ def main():
         stopbits=serial.STOPBITS_ONE,
     )
 
+    clear = lambda: os.system('clear')
+
     while numGames < 50:
         if startedFlag == False:
             print("Game started")
@@ -280,7 +283,7 @@ def main():
                     if numGames % 2 != 0:
                         selected = (7 - selected[0], 7 - selected[1])
                         move = (7 - move[0], 7 - move[1])
-                        
+
                     selectedCoords = get_board_squares(selected, corners)
                     moveCoords = get_board_squares(move, corners)
 
@@ -296,7 +299,14 @@ def main():
                     turn = bot
                     selected = None
                     move = None
-
+            
+            # print board in console
+            print('Current board:')
+            print("  0 1 2 3 4 5 6 7")
+            for idx, row in enumerate(prevBoard):
+                print(f"{idx} {row}")
+            # clear console
+            clear()
         else:
             print("Checkers board not detected, checking game end...")
             # check game end

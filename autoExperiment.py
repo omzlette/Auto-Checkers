@@ -3,6 +3,8 @@ import numpy as np
 import pyautogui
 from PIL import ImageGrab
 import copy
+import serial
+import time
 
 def convert_to_binary(image):
     hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
@@ -120,9 +122,11 @@ def match_images(img, template):
     return loc
 
 def getMove(prevBoard, newBoard):
+    selected = None
+    move = None
+    pieceType = None
     for row in range(8):
         for col in range(8):
-            # print(prevBoard[row][col], newBoard[row][col], row, col)
             if prevBoard[row][col] != 0 and newBoard[row][col] == 0:
                 selected = (row, col)
                 pieceType = prevBoard[row][col]
@@ -165,14 +169,6 @@ def update_board_state(prevBoard, currBoard):
     
     return updated_board
 
-def checkKing(board):
-    for i in range(8):
-        if board[7][i] == 1:
-            board[7][i] = 3
-        if board[0][i] == 2:
-            board[0][i] = 4
-    return board
-
 def initGame(numGames):
     turn = 'b'
     # initialize the board (0: empty, 1: black, 2: white, 3: black king, 4: white king)
@@ -185,116 +181,144 @@ def initGame(numGames):
                           [0, 2, 0, 2, 0, 2, 0, 2],
                           [2, 0, 2, 0, 2, 0, 2, 0]])
     
+    if numGames % 2 != 0:
+        prevBoard = np.flip(prevBoard, 0)
+        prevBoard = np.flip(prevBoard, 1)
+
     bot = 'b' if numGames % 2 == 0 else 'w'
     our = 'w' if numGames % 2 == 0 else 'b'
     return turn, prevBoard, bot, our
 
 def main():
-    # test update_board_state
-    prevBoard = np.array([[0, 1, 0, 1, 0, 1, 0, 1],
-                          [1, 0, 1, 0, 1, 0, 1, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 2, 0, 2, 0, 2, 0, 2],
-                          [2, 0, 2, 0, 2, 0, 2, 0]])
-    
-    currBoard = np.array([[0, 1, 0, 1, 0, 1, 0, 1],
-                          [1, 0, 1, 0, 1, 0, 1, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 1, 0, 1, 0, 1, 0, 1],
-                          [1, 0, 1, 0, 1, 0, 1, 0]])
+    # pickerwindowBG = np.zeros((300, 512, 3), np.uint8)
+    # hsvColorSlider()
+    # (hmin, hmax, smin, smax, vmin, vmax) = getHSV()
+    # cv.imshow('HSV Color Slider', pickerwindowBG)
 
-    updated_board = update_board_state(prevBoard, currBoard)
+    # hue_min = 0
+    # hue_max = 179
+    # sat_min = 0
+    # sat_max = 255
+    # val_min = 124
+    # val_max = 255
 
-    print("Updated board")
-    for row in updated_board:
-        print(row)
+    numGames = 0
+    startedFlag = False
 
-if __name__ == '__main__':
-    main()
+    jetson = serial.Serial(
+        port="/dev/ttyUSB0",
+        baudrate=115200,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+    )
 
-# def main():
-#     pickerwindowBG = np.zeros((300, 512, 3), np.uint8)
-#     # hsvColorSlider()
-#     # (hmin, hmax, smin, smax, vmin, vmax) = getHSV()
-#     # cv.imshow('HSV Color Slider', pickerwindowBG)
+    while numGames < 50:
+        if startedFlag == False:
+            print("Game started")
+            startedFlag = True
+            turn, prevBoard, bot, our = initGame(numGames)
 
-#     hue_min = 0
-#     hue_max = 179
-#     sat_min = 0
-#     sat_max = 255
-#     val_min = 124
-#     val_max = 255
+        # print(bot, our, numGames)
 
-#     numGames = 0
-#     startedFlag = False
+        screen = ImageGrab.grab(all_screens=True)
 
-#     while numGames < 50:
-#         if startedFlag == False:
-#             print("Game started")
-#             startedFlag = True
-#             turn, prevBoard, bot, our = initGame(numGames)
+        # screen right : (1920, 0, 3840, 1080)
+        # screen left : (0, 0, 1920, 1080)
 
-#         print(bot, our, numGames)
+        screen = screen.crop((1920, 0, 3840, 1080))
+        screen = np.array(screen)
 
-#         screen = ImageGrab.grab(all_screens=True)
+        screen_binary = convert_to_binary(screen)
+        ret, corners = detect_checkers_board(screen)
+        screen = cv.cvtColor(screen, cv.COLOR_BGR2RGB)
 
-#         # screen right : (1920, 0, 3840, 1080)
-#         # screen left : (0, 0, 1920, 1080)
+        if ret:
+            print("Checkers board detected")
+            screen_binary = cv.cvtColor(screen_binary, cv.COLOR_GRAY2RGB)
 
-#         screen = screen.crop((1920, 0, 3840, 1080))
-#         screen = np.array(screen)
-
-#         screen_binary = convert_to_binary(screen)
-#         ret, corners = detect_checkers_board(screen)
-#         screen = cv.cvtColor(screen, cv.COLOR_BGR2RGB)
-
-#         if ret:
-#             print("Checkers board detected")
-#             screen_binary = cv.cvtColor(screen_binary, cv.COLOR_GRAY2RGB)
-
-#             # get the pieces
-#             pieces = detect_pieces(screen_binary, corners)
-#             print(len(pieces), pieces)
-#             for piece in pieces:
-#                 x, y, w, h = piece
-#                 cv.rectangle(screen_binary, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            ###########################################################
+            # # get the pieces and draw the bounding boxes
+            # pieces = detect_pieces(screen_binary, corners)
             
-#             # update board state
-#             # newBoard, sorted_pieces = update_board_state(screen_binary, corners)
-#             # if turn == bot:
-#             #     selected, move = getMove(prevBoard, newBoard)
-
-#             screen_binary = crop_board(screen_binary, corners)
+            # for piece in pieces:
+            #     x, y, w, h = piece
+            #     cv.rectangle(screen_binary, (x, y), (x+w, y+h), (0, 255, 0), 2)
             
-#             cv.imshow('screen_binary', screen_binary)
-#         else:
-#             print("Checkers board not detected")
-#             # check game end
-#             endimg = cv.imread('end.png')
-#             matchinfo = match_images(screen, endimg)
-#             loc, w, h = matchinfo
-#             if loc[0].size > 0:
-#                 print("Game ended")
-#                 for pt in zip(*loc[::-1]):
-#                     cv.rectangle(screen, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
-                
-#                 # reset the board
-#                 pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
-#                 pyautogui.click()
-#                 numGames += 1
-#                 startedFlag = False
+            # screen_binary = crop_board(screen_binary, corners)
+            # cv.imshow('screen_binary', screen_binary)
+            ###########################################################
 
-#             else:
-#                 print("Game not ended")
-#         # show screen
-#         cv.imshow('screen', screen)
+            if turn == bot:
+                # get the board state
+                currBoard, _ = getBoardState(screen_binary, corners)
+                # get the move
+                selected, move, _ = getMove(prevBoard, currBoard)
 
-#         if cv.waitKey(1) & 0xFF == ord('q'):
-#             break
-#     cv.destroyAllWindows()
+                if selected is not None and move is not None:
+                    if numGames % 2 != 0:
+                        selected = (7 - selected[0], 7 - selected[1])
+                        move = (7 - move[0], 7 - move[1])
+                    # update the board state
+                    prevBoard = update_board_state(prevBoard, currBoard)
+                    # send the move
+                    jetson.write(f"{selected[0]}, {selected[1]}, {move[0]}, {move[1]}\n".encode('utf-8'))
+                    turn = our
+                    selected = None
+                    move = None
+
+            else:
+                # get selection and move
+                data = jetson.readline()
+                if data:
+                    data = data.decode('utf-8')
+                    selected, move = data.split()
+                    selected = (int(selected[0]), int(selected[1]))
+                    move = (int(move[0]), int(move[1]))
+
+                if selected is not None and move is not None:
+                    if numGames % 2 != 0:
+                        selected = (7 - selected[0], 7 - selected[1])
+                        move = (7 - move[0], 7 - move[1])
+                        
+                    selectedCoords = get_board_squares(selected, corners)
+                    moveCoords = get_board_squares(move, corners)
+
+                    # move the piece
+                    pyautogui.moveTo(selectedCoords[0], selectedCoords[1])
+                    pyautogui.mouseDown()
+                    pyautogui.moveTo(moveCoords[0], moveCoords[1])
+                    pyautogui.mouseUp()
+                    
+                    # update the board state
+                    prevBoard[selected[0]][selected[1]] = 0
+                    prevBoard[move[0]][move[1]] = 2 if turn == 'w' else 1
+                    turn = bot
+                    selected = None
+                    move = None
+
+        else:
+            print("Checkers board not detected, checking game end...")
+            # check game end
+            endimg = cv.imread('end.png')
+            matchinfo = match_images(screen, endimg)
+            loc, w, h = matchinfo
+            if loc[0].size > 0:
+                print("Game ended")
+                for pt in zip(*loc[::-1]):
+                    cv.rectangle(screen, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+        
+                # reset the board
+                pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
+                pyautogui.click()
+                numGames += 1
+                startedFlag = False
+
+            else:
+                print("Game not ended")
+        # show screen
+        cv.imshow('screen', screen)
+
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv.destroyAllWindows()

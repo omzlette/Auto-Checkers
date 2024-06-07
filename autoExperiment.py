@@ -12,7 +12,7 @@ def convert_to_binary(image):
     # remove background
     # (hmin, hmax, smin, smax, vmin, vmax) = getHSV()
     hmin = 0
-    hmax = 179
+    hmax = 104
     smin = 0
     smax = 255
     vmin = 124
@@ -153,7 +153,7 @@ def getBoardState(boardimg, corners):
                 x, y, _, _ = piece
                 if coords[0] - x_delta/2 < x < coords[0] + x_delta/2 and coords[1] - y_delta/2 < y < coords[1] + y_delta/2:
                     board[row][col] = 1
-                    sorted_pieces.append(piece, square, coords)
+                    sorted_pieces.append((piece, square, coords))
                     break
     return board, sorted_pieces
 
@@ -197,7 +197,7 @@ def main():
     # cv.imshow('HSV Color Slider', pickerwindowBG)
 
     # hue_min = 0
-    # hue_max = 179
+    # hue_max = 104
     # sat_min = 0
     # sat_max = 255
     # val_min = 124
@@ -207,14 +207,14 @@ def main():
     startedFlag = False
 
     jetson = serial.Serial(
-        port="/dev/ttyUSB0",
+        port="COM6",
         baudrate=115200,
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
     )
 
-    clear = lambda: os.system('clear')
+    clear = lambda: os.system('cls')
 
     while numGames < 50:
         if startedFlag == False:
@@ -229,7 +229,7 @@ def main():
         # screen right : (1920, 0, 3840, 1080)
         # screen left : (0, 0, 1920, 1080)
 
-        screen = screen.crop((1920, 0, 3840, 1080))
+        # screen = screen.crop((1920, 0, 3840, 1080))
         screen = np.array(screen)
 
         screen_binary = convert_to_binary(screen)
@@ -265,7 +265,8 @@ def main():
                     # update the board state
                     prevBoard = update_board_state(prevBoard, currBoard)
                     # send the move
-                    TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                    TxBuffer = f'rx{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                    print(TxBuffer)
                     jetson.write(TxBuffer.encode('utf-8'))
                     turn = our
                     selected = None
@@ -275,8 +276,9 @@ def main():
             else:
                 # get selection and move
                 RxBuffer = jetson.readline().decode('utf-8').strip()
-                if RxBuffer and 'm' in RxBuffer:
-                    RxBuffer = RxBuffer.replace('m', '')
+                if RxBuffer and 'tx' in RxBuffer:
+                    print(RxBuffer)
+                    RxBuffer = RxBuffer.replace('tx', '')
                     selected, move = RxBuffer.split(',')
                     selected = tuple(map(int, selected.split(';')))
                     move = tuple(map(int, move.split(';')))
@@ -286,8 +288,8 @@ def main():
                         selected = (7 - selected[0], 7 - selected[1])
                         move = (7 - move[0], 7 - move[1])
 
-                    selectedCoords = get_board_squares(selected, corners)
-                    moveCoords = get_board_squares(move, corners)
+                    selectedCoords, _, _ = get_board_squares(selected, corners)
+                    moveCoords, _, _ = get_board_squares(move, corners)
 
                     # move the piece
                     pyautogui.moveTo(selectedCoords[0], selectedCoords[1])
@@ -303,14 +305,15 @@ def main():
                     move = None
                     RxBuffer = ''
             
-            # print board in console
-            clear()
-            print('Current board:')
-            print("  0 1 2 3 4 5 6 7")
-            for idx, row in enumerate(prevBoard):
-                print(f"{idx} {row}")
-            # clear console
-            clear()
+            # # print board in console
+            # clear()
+            # print(f"Game {numGames + 1} - Turn: {turn}")
+            # print('Current board:')
+            # print("  0 1 2 3 4 5 6 7")
+            # for idx, row in enumerate(prevBoard):
+            #     print(f"{idx} {row}")
+            # # clear console
+            # clear()
         else:
             print("Checkers board not detected, checking game end...")
             # check game end
@@ -331,11 +334,12 @@ def main():
             else:
                 print("Game not ended")
         # show screen
-        cv.imshow('screen', screen)
+        # cv.imshow('screen', screen)
+    #     cv.imshow('screen_binary', screen_binary)
 
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
-    cv.destroyAllWindows()
+    #     if cv.waitKey(1) & 0xFF == ord('q'):
+    #         break
+    # cv.destroyAllWindows()
 
 if __name__ == "__main__":
     main()

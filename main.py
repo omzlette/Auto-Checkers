@@ -113,11 +113,17 @@ def main():
                 running = False
                 if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
                     print('Game Over, Winner: Black')
-                    # winnerData(loop, 'b', filename)
                 elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
                     print('Game Over, Winner: White')
-                    # winnerData(loop, 'w', filename)
+                else:
+                    print('Game Over, Draw')
             if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
+                    print('Game Over, Winner: Black')
+                elif countBlack(board.board) < countWhite(board.board) or isGameOver == 'w':
+                    print('Game Over, Winner: White')
+                else:
+                    print('Game Over, Draw')
                 print('Restarting...')
                 main()
     pygame.quit()

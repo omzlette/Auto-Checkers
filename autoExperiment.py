@@ -265,19 +265,21 @@ def main():
                     # update the board state
                     prevBoard = update_board_state(prevBoard, currBoard)
                     # send the move
-                    jetson.write(f"{selected[0]}, {selected[1]}, {move[0]}, {move[1]}\n".encode('utf-8'))
+                    TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                    jetson.write(TxBuffer.encode('utf-8'))
                     turn = our
                     selected = None
                     move = None
+                    TxBuffer = ''
 
             else:
                 # get selection and move
-                data = jetson.readline()
-                if data:
-                    data = data.decode('utf-8')
-                    selected, move = data.split()
-                    selected = (int(selected[0]), int(selected[1]))
-                    move = (int(move[0]), int(move[1]))
+                RxBuffer = jetson.readline().decode('utf-8').strip()
+                if RxBuffer and 'm' in RxBuffer:
+                    RxBuffer = RxBuffer.replace('m', '')
+                    selected, move = RxBuffer.split(',')
+                    selected = tuple(map(int, selected.split(';')))
+                    move = tuple(map(int, move.split(';')))
 
                 if selected is not None and move is not None:
                     if numGames % 2 != 0:
@@ -299,8 +301,10 @@ def main():
                     turn = bot
                     selected = None
                     move = None
+                    RxBuffer = ''
             
             # print board in console
+            clear()
             print('Current board:')
             print("  0 1 2 3 4 5 6 7")
             for idx, row in enumerate(prevBoard):
@@ -332,3 +336,6 @@ def main():
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
     cv.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()

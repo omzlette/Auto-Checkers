@@ -3,10 +3,6 @@ from pygame.locals import *
 from checkers import *
 from player import *
 from autoExperiment import *
-import cv2 as cv
-import numpy as np
-import pyautogui
-from PIL import ImageGrab
 import copy
 import serial
 
@@ -118,7 +114,6 @@ def main():
                     f.write(f'Game {numGames}: {isGameOver}, No. moves: {nummoves}\n')
                     f.write(f'Moves Done: {board.movesDone}\n\n')
 
-    cv.destroyAllWindows()
     pygame.quit()
 
 if __name__ == '__main__':

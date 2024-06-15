@@ -12,10 +12,10 @@ def convert_to_binary(image):
     # remove background
     # (hmin, hmax, smin, smax, vmin, vmax) = getHSV()
     hmin = 0
-    hmax = 104
+    hmax = 108
     smin = 0
-    smax = 255
-    vmin = 124
+    smax = 134
+    vmin = 108
     vmax = 255
     lower = np.array([hmin, smin, vmin])
     upper = np.array([hmax, smax, vmax])
@@ -122,21 +122,24 @@ def match_images(img, template):
 
     return loc
 
-def getMove(prevBoard, newBoard):
+def getMove(prevBoard, newBoard, turn):
+    convertTurn = {'b': (1, 3), 'w': (2, 4)}
     selected = None
     move = None
     pieceType = None
     for row in range(8):
         for col in range(8):
-            if prevBoard[row][col] != 0 and newBoard[row][col] == 0:
+            if prevBoard[row][col] != 0 and newBoard[row][col] == 0 and prevBoard[row][col] in convertTurn[turn]:
                 selected = (row, col)
                 pieceType = prevBoard[row][col]
-                if pieceType == 1 and row == 7:
-                    pieceType = 3
-                elif pieceType == 2 and row == 0:
-                    pieceType = 4
             if prevBoard[row][col] == 0 and newBoard[row][col] != 0:
                 move = (row, col)
+
+    if selected is not None and move is not None and pieceType is not None:
+        if pieceType == 1 and move[0] == 7:
+            pieceType = 3
+        elif pieceType == 2 and move[0] == 0:
+            pieceType = 4
 
     return selected, move, pieceType
 
@@ -157,18 +160,45 @@ def getBoardState(boardimg, corners):
                     break
     return board, sorted_pieces
 
-def update_board_state(prevBoard, currBoard):
+def update_board_state(prevBoard, currBoard, turn):
+    convertTurn = {'b': (1, 3), 'w': (2, 4)}
+    otherPlayer = 'b' if turn == 'w' else 'w'
     updated_board = copy.deepcopy(prevBoard)
+    capturedPiece = []
 
     for row in range(8):
         for col in range(8):
             if currBoard[row][col] == 1 and prevBoard[row][col] == 0:
-                _, _, pieceType = getMove(prevBoard, currBoard)
+                _, _, pieceType = getMove(prevBoard, currBoard, turn)
                 updated_board[row][col] = pieceType
             elif currBoard[row][col] == 0 and prevBoard[row][col] != 0:
                 updated_board[row][col] = 0
+                if prevBoard[row][col] in convertTurn[otherPlayer]:
+                    capturedPiece.append((row, col))
     
-    return updated_board
+    return updated_board, capturedPiece
+
+def getMultipleCapture(prevBoard, newBoard, turn, captured):
+    selected, move, _ = getMove(prevBoard, newBoard, turn)
+    selectedList = [selected]
+    moves = []
+    
+    deltaRow = move[0] - selected[0]
+    deltaCol = move[1] - selected[1]
+    if deltaRow < 0 or deltaCol < 0:
+        captured = captured[::-1]
+    
+    for row, col in captured:
+        rowDelta = row - selected[0]
+        rowDelta = rowDelta // abs(rowDelta)
+        colDelta = col - selected[1]
+        colDelta = colDelta // abs(colDelta)
+        selected = (row + rowDelta, col + colDelta)
+        moves.append(selected)
+    
+    selectedList.extend(moves[:-1])
+
+    return selectedList, moves
 
 def initGame(numGames):
     turn = 'b'
@@ -191,18 +221,6 @@ def initGame(numGames):
     return turn, prevBoard, bot, our
 
 def main():
-    # pickerwindowBG = np.zeros((300, 512, 3), np.uint8)
-    # hsvColorSlider()
-    # (hmin, hmax, smin, smax, vmin, vmax) = getHSV()
-    # cv.imshow('HSV Color Slider', pickerwindowBG)
-
-    # hue_min = 0
-    # hue_max = 104
-    # sat_min = 0
-    # sat_max = 255
-    # val_min = 124
-    # val_max = 255
-
     numGames = 0
     startedFlag = False
 
@@ -212,22 +230,26 @@ def main():
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
-    )
+        timeout=1)
 
+    TxBuffer = "~/miniforge3/envs/checkers/bin/python ~/Auto-Checkers/main-copy.py\r"
+    print(f"Sending: {TxBuffer.strip()}")
+    jetson.write(TxBuffer.encode('utf-8'))
+    time.sleep(3)
+
+    jetson.reset_input_buffer()
+    jetson.reset_output_buffer()
     clear = lambda: os.system('cls')
 
-    while numGames < 50:
+    while numGames < 100:
         if startedFlag == False:
             print("Game started")
             startedFlag = True
             turn, prevBoard, bot, our = initGame(numGames)
+            time.sleep(3)
 
-        # print(bot, our, numGames)
-
+        # time.sleep(5)
         screen = ImageGrab.grab(all_screens=True)
-
-        # screen right : (1920, 0, 3840, 1080)
-        # screen left : (0, 0, 1920, 1080)
 
         # screen = screen.crop((1920, 0, 3840, 1080))
         screen = np.array(screen)
@@ -237,83 +259,134 @@ def main():
         screen = cv.cvtColor(screen, cv.COLOR_BGR2RGB)
 
         if ret:
-            print("Checkers board detected")
+            # print(f"Checkers board detected, Turn: {turn}")
+            time.sleep(1)
             screen_binary = cv.cvtColor(screen_binary, cv.COLOR_GRAY2RGB)
-
-            ###########################################################
-            # # get the pieces and draw the bounding boxes
-            # pieces = detect_pieces(screen_binary, corners)
-            
-            # for piece in pieces:
-            #     x, y, w, h = piece
-            #     cv.rectangle(screen_binary, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            
-            # screen_binary = crop_board(screen_binary, corners)
-            # cv.imshow('screen_binary', screen_binary)
-            ###########################################################
 
             if turn == bot:
                 # get the board state
                 currBoard, _ = getBoardState(screen_binary, corners)
+                with open('debug-board.txt', 'w') as f:
+                    for row in currBoard:
+                        f.write(f'{row}\n')
                 # get the move
-                selected, move, _ = getMove(prevBoard, currBoard)
+                selected, move, _ = getMove(prevBoard, currBoard, turn)
 
                 if selected is not None and move is not None:
                     if numGames % 2 != 0:
                         selected = (7 - selected[0], 7 - selected[1])
                         move = (7 - move[0], 7 - move[1])
-                    # update the board state
-                    prevBoard = update_board_state(prevBoard, currBoard)
-                    # send the move
-                    TxBuffer = f'rx{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
-                    print(TxBuffer)
-                    jetson.write(TxBuffer.encode('utf-8'))
-                    turn = our
-                    selected = None
-                    move = None
-                    TxBuffer = ''
-
-            else:
-                # get selection and move
-                RxBuffer = jetson.readline().decode('utf-8').strip()
-                if RxBuffer and 'tx' in RxBuffer:
-                    print(RxBuffer)
-                    RxBuffer = RxBuffer.replace('tx', '')
-                    selected, move = RxBuffer.split(',')
-                    selected = tuple(map(int, selected.split(';')))
-                    move = tuple(map(int, move.split(';')))
-
-                if selected is not None and move is not None:
-                    if numGames % 2 != 0:
-                        selected = (7 - selected[0], 7 - selected[1])
-                        move = (7 - move[0], 7 - move[1])
-
-                    selectedCoords, _, _ = get_board_squares(selected, corners)
-                    moveCoords, _, _ = get_board_squares(move, corners)
-
-                    # move the piece
-                    pyautogui.moveTo(selectedCoords[0], selectedCoords[1])
-                    pyautogui.mouseDown()
-                    pyautogui.moveTo(moveCoords[0], moveCoords[1])
-                    pyautogui.mouseUp()
                     
-                    # update the board state
-                    prevBoard[selected[0]][selected[1]] = 0
-                    prevBoard[move[0]][move[1]] = 2 if turn == 'w' else 1
-                    turn = bot
-                    selected = None
-                    move = None
-                    RxBuffer = ''
+                    _, capturedPiece = update_board_state(prevBoard, currBoard, turn)
+                    # send the move
+                    if len(capturedPiece) < 2:
+                        TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                        print(f'Sent: {TxBuffer.strip()}')
+                        time.sleep(0.5)
+                        jetson.write(TxBuffer.encode('utf-8'))
+
+                        response = jetson.readline().decode('utf-8').strip()
+                        print(f'Received: {response}')
+                        if 'ACK' in response:
+                            print("Move sent successfully")
+                            # update the board state
+                            currBoard, _ = getBoardState(screen_binary, corners)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
+                            selected = None
+                            move = None
+                            turn = response.replace('ACK', '')
+
+                    else:
+                        time.sleep(0.5)
+                        currBoard, _ = getBoardState(screen_binary, corners)
+                        selectedList, moves = getMultipleCapture(prevBoard, currBoard, turn, capturedPiece)
+                        countNum = 0
+                        while countNum < len(selectedList):
+                            print(f'Sending move {countNum + 1} of {len(selectedList)}')
+                            print(f'Selected: {selectedList[countNum]}, Move: {moves[countNum]}')
+                            with open('debug-board.txt', 'a') as f:
+                                f.write(f'{selectedList[countNum]}, {moves[countNum]}\n')
+                            time.sleep(0.1)
+                            selected, move = selectedList[countNum], moves[countNum]
+                            if numGames % 2 != 0:
+                                selected = (7 - selected[0], 7 - selected[1])
+                                move = (7 - move[0], 7 - move[1])
+                            TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                            print(f'Sent: {TxBuffer.strip()}')
+                            jetson.write(TxBuffer.encode('utf-8'))
+                            
+                            response = jetson.readline().decode('utf-8').strip()
+                            print(f'Received: {response}')
+                            if 'ACK' in response:
+                                print("Move sent successfully")
+                                countNum += 1
+                            else:
+                                print("Move not sent")
+                                break
+                        
+                        if countNum == len(selectedList):
+                            # update the board state
+                            currBoard, _ = getBoardState(screen_binary, corners)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
+                            selected = None
+                            move = None
+                            turn = response.replace('ACK', '')
+                    # time.sleep(0.5)
+                
+            else:
+                time.sleep(0.5)
+                # get selection and move
+                if jetson.in_waiting > 0:
+                    RxBuffer = jetson.readline().decode('utf-8').strip()
+                    if RxBuffer and 'm' in RxBuffer:
+                        print(f'Received: {RxBuffer}')
+                        RxBuffer = RxBuffer.replace('m', '')
+                        selected, move, receivedTurn = RxBuffer.split(',')
+                        selected = tuple(map(int, selected.split(';')))
+                        move = tuple(map(int, move.split(';')))
+
+                        jetson.write('ACK\n'.encode('utf-8'))
+                        print("ACK sent")
+                        if selected is not None and move is not None:
+                            if numGames % 2 != 0:
+                                selected = (7 - selected[0], 7 - selected[1])
+                                move = (7 - move[0], 7 - move[1])
+
+                            selectedCoords, _, _ = get_board_squares(selected, corners)
+                            moveCoords, _, _ = get_board_squares(move, corners)
+
+                            print(f'Selected: {selected}, Move: {move}'
+                                  f'\nSelected Coords: {selectedCoords}, Move Coords: {moveCoords}')
+
+                            # move the piece
+                            pyautogui.moveTo(selectedCoords[0], selectedCoords[1], duration=0.25)
+                            pyautogui.click()
+                            pyautogui.moveTo(moveCoords[0], moveCoords[1], duration=0.25)
+                            pyautogui.click()
+                            
+                            # update the board state
+                            pieceType = prevBoard[selected[0]][selected[1]]
+                            prevBoard[selected[0]][selected[1]] = 0
+                            prevBoard[move[0]][move[1]] = pieceType
+                            if abs(selected[0] - move[0]) >= 2:
+                                rowDelta = (selected[0] - move[0])//abs(selected[0] - move[0])
+                                colDelta = (selected[1] - move[1])//abs(selected[1] - move[1])
+                                prevBoard[move[0] + rowDelta][move[1] + colDelta] = 0
+
+                            turn = receivedTurn
+                            selected = None
+                            move = None
+                            # time.sleep(0.5)
             
-            # # print board in console
+            # screen_binary = crop_board(screen_binary, corners)
+            # print board in console
             # clear()
             # print(f"Game {numGames + 1} - Turn: {turn}")
             # print('Current board:')
             # print("  0 1 2 3 4 5 6 7")
             # for idx, row in enumerate(prevBoard):
             #     print(f"{idx} {row}")
-            # # clear console
-            # clear()
+
         else:
             print("Checkers board not detected, checking game end...")
             # check game end
@@ -328,11 +401,13 @@ def main():
                 # reset the board
                 pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
                 pyautogui.click()
+                jetson.write('next\n'.encode('utf-8'))
                 numGames += 1
                 startedFlag = False
 
             else:
                 print("Game not ended")
+    time.sleep(2.5)
         # show screen
         # cv.imshow('screen', screen)
     #     cv.imshow('screen_binary', screen_binary)

@@ -373,7 +373,7 @@ class Minimax(Player):
         self.oppTurn = 'w' if turn == 'b' else 'b'
         self.user = False
         self.timer = 0
-        self.timeLimit = 30
+        self.timeLimit = 20
 
     def perform_all_move(self, piece, initialMove, turn, board):
         new_board = self.simulate_game(piece, initialMove, turn, board)

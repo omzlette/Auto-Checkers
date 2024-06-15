@@ -166,6 +166,9 @@ class Player():
                                 mandatory_moves.append([row, col])
                         else:
                             mandatory_moves.append([row, col])
+                        if board[row][col] == 'b' and row + 2 == 7:
+                            # If the piece is at the end of the board, it's promoted to king and stops continuing the capture
+                            break
                 elif board[row][col].lower() == 'w' and turn == 'w':
                     if self.can_capture(row, col, board)[1]:
                         if prevMove is not None:
@@ -173,6 +176,9 @@ class Player():
                                 mandatory_moves.append([row, col])
                         else:
                             mandatory_moves.append([row, col])
+                        if board[row][col] == 'w' and row - 2 == 0:
+                            # If the piece is at the end of the board, it's promoted to king and stops continuing the capture
+                            break
         return mandatory_moves if mandatory_moves else []
     
     def make_king(self, row, col, board):
@@ -232,7 +238,11 @@ class Player():
 
         return moveList[::-1]
     
-    def evaluate_board(self, board):
+    def evaluate_board(self, board, maximizing=True):
+        # Evaluation function for the board
+        # The bot is always maximizing, the opponent is always minimizing
+        # Can only be used for implementing algorithms that require evaluation function
+
         PIECECOUNT = 100
         KINGPIECE = 50
         TRAPPEDKING = 50 # negative points
@@ -246,23 +256,27 @@ class Player():
             totalPieces += sum(list(map(lambda x: True if x.lower() in ['b', 'w'] else False, board[row])))
 
         # Multiplier for making the bot favor more pieces
-        # if totalPieces < 8:
-        #     MULTIPLIER = 5/6
+        if totalPieces < 8:
+            MULTIPLIER = 5/6
+        elif totalPieces >= 8 and totalPieces <= 10:
+            MULTIPLIER = 1
+        elif totalPieces >= 11 and totalPieces <= 13:
+            MULTIPLIER = 7/6
+        else:
+            MULTIPLIER = 4/3
 
-        ourTurn = self.turn
-        oppTurn = 'w' if self.turn == 'b' else 'b'
-        ourVal = 3 # Starting at 3 for the turn based points
+        ourTurn = self.botTurn if maximizing else self.oppTurn
+        oppTurn = self.oppTurn if maximizing else self.botTurn
+        ourVal = 3 # Turn value
         oppVal = 0
 
-        kingMoves = {}
-        
         for row in range(rows):
             for col in range(cols):
                 # No. of pieces
                 if board[row][col].lower() == ourTurn:
-                    ourVal += PIECECOUNT
+                    ourVal += PIECECOUNT * MULTIPLIER
                 elif board[row][col].lower() == oppTurn:
-                    oppVal += PIECECOUNT
+                    oppVal += PIECECOUNT * MULTIPLIER
                 # No. of kings and trapped kings (Added on top of pieces)
                 if board[row][col] == ourTurn.upper():
                     ourVal += KINGPIECE
@@ -291,10 +305,15 @@ class Player():
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
-        if board[7][6].lower() == 'w' and board[6][7].lower() == 'b':
+        if board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and ourTurn == 'w':
             ourVal -= DOGHOLE
-        if board[0][1].lower() == 'b' and board[1][0].lower() == 'w':
+        elif board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and oppTurn == 'w':
             oppVal -= DOGHOLE
+        
+        if board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and oppTurn == 'b':
+            oppVal -= DOGHOLE
+        elif board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and ourTurn == 'b':
+            ourVal -= DOGHOLE
 
         # Back Rank (making the other side getting a king is better)
         # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
@@ -305,10 +324,15 @@ class Player():
         backrankBCount = sum(backrankB)
         backrankWCount = sum(backrankW)
 
-        if backrankBCount > backrankWCount:
+        if backrankBCount > backrankWCount and ourTurn == 'b':
             ourVal += BACKRANK
-        elif backrankWCount > backrankBCount:
-            oppVal += BACKRANK        
+        elif backrankWCount > backrankBCount and oppTurn == 'b':
+            oppVal += BACKRANK
+
+        if backrankWCount > backrankBCount and ourTurn == 'w':
+            ourVal += BACKRANK
+        elif backrankBCount > backrankWCount and oppTurn == 'w':
+            oppVal += BACKRANK
 
         # Win/Lose/Draw
         if is_game_over(board, self.movesDone) == ourTurn:
@@ -377,12 +401,16 @@ class Minimax(Player):
 
     def play(self, board):
         # self.prevCount = countBlack(board) + countWhite(board)
-        _, bestPiece, bestMove = self.iterativeDeepening(board)
+        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+        if len(mandatory_moves) == 1:
+            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+        else:
+            _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
         
     def minimax(self, board, depth, maximizing):
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer > self.timeLimit:
-            return self.evaluate_board(board), None, None
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
+            return self.evaluate_board(board, maximizing), None, None
 
         if maximizing:
             maxEval = -np.inf
@@ -423,8 +451,12 @@ class AlphaBeta(Minimax):
         self.hashtable = {}
 
     def play(self, board):
-        self.prevCount = countBlack(board) + countWhite(board)
-        _, bestPiece, bestMove = self.iterativeDeepening(board)
+        # self.prevCount = countBlack(board) + countWhite(board)
+        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+        if len(mandatory_moves) == 1:
+            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+        else:
+            _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
 
     def iterativeDeepening(self, board):
@@ -457,7 +489,7 @@ class AlphaBeta(Minimax):
         bestMove = None
         movesdict = self.get_all_moves(self.botTurn, board)
 
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer >= self.timeLimit:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)

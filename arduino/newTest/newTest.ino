@@ -75,6 +75,36 @@ long stepCounter;
 float stepSize;
 
 void setup() {
+  cli();
+
+  // Set timer0 interrupt at 1MHz
+  TCCR0A = 0; // set entire TCCR0A register to 0
+  TCCR0B = 0; // same for TCCR0B
+  TCNT0  = 0; // initialize counter value to 0
+  // set compare match register for 1Mhz increments
+  OCR0A = 15; // = (16*10^6) / (1*10^6) - 1 (must be <256)
+  // turn on CTC mode
+  TCCR0A |= (1 << WGM01);
+  // Set CS01 and CS00 bits for 1 prescaler
+  TCCR0B |= (1 << CS00);
+  // enable timer compare interrupt
+  TIMSK0 |= (1 << OCIE0A);
+
+  // Set timer1 interrupt at 1kHz
+  TCCR1A = 0; // set entire TCCR1A register to 0
+  TCCR1B = 0; // same for TCCR1B
+  TCNT1  = 0; // initialize counter value to 0
+  // set compare match register for 1khz increments
+  OCR1A = 15999; // = (16*10^6) / (1*10^3) - 1 (must be <65536)
+  // turn on CTC mode
+  TCCR1B |= (1 << WGM12);
+  // Set CS12, CS11 and CS10 bits for 64 prescaler
+  TCCR1B |= (1 << CS12) | (1 << CS10);
+  // enable timer compare interrupt
+  TIMSK1 |= (1 << OCIE1A);
+
+  
+
   Serial.begin(115200);
 
   initPins();
@@ -87,6 +117,37 @@ void setup() {
 
   // steppers.addStepper(stepper1);
   // steppers.addStepper(stepper2);
+
+  sei();
+}
+
+ISR(TIMER0_COMPA_vect) {
+  if(Started){
+    stepper1.moveTo(moveHere);
+    stepper1.run();
+    if(stepper1.distanceToGo() == 0){
+      unsigned long delayTime = micros();
+      while(micros() - delayTime < 1 * 1e+6){
+        digitalWrite(31, HIGH);
+      }
+      if(moveHere == 0 && stepper1.distanceToGo() == 0){
+        digitalWrite(DRV1_EN, LOW);
+        digitalWrite(DRV2_EN, LOW);
+        digitalWrite(31, LOW);
+        startFlag = false;
+        Started = false;
+      }
+      elif(moveHere != 0 && stepper1.distanceToGo() == 0){
+        moveHere = 0;
+      }
+    }
+  }
+}
+
+ISR(TIMER1_COMPA_vect) {
+  if(DEBUG_RUNNING){
+    debug();
+  }
 }
 
 void loop() {
@@ -101,6 +162,7 @@ void loop() {
 
   if(startFlag && !Started && micros() - timerButton >= 1 * 1e+6){
     Started = true;
+    buttonState = LOW;
     digitalWrite(DRV1_EN, HIGH);
     digitalWrite(DRV2_EN, HIGH);
     digitalWrite(31, HIGH);
@@ -146,27 +208,6 @@ void loop() {
   //   stepper2.run();
 
   // }
-
-  if(Started){
-    stepper1.moveTo(moveHere);
-    stepper1.run();
-    if(stepper1.distanceToGo() == 0){
-      unsigned long delayTime = micros();
-      while(micros() - delayTime < 1 * 1e+6){
-        digitalWrite(31, HIGH);
-      }
-      if(moveHere == 0 && stepper1.distanceToGo() == 0){
-        digitalWrite(DRV1_EN, LOW);
-        digitalWrite(DRV2_EN, LOW);
-        digitalWrite(31, LOW);
-        startFlag = false;
-        Started = false;
-      }
-      else{
-        moveHere = 0;
-      }
-    }
-  }
 
 }
 

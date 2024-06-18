@@ -620,14 +620,13 @@ class AlphaBeta(Minimax):
     
     def hashBoard(self, board, zobristtable):
         hash = 0
-        zobristtableCopy = copy.deepcopy(zobristtable)
         for row in range(rows):
             for col in range(cols):
                 piece = board[row][col]
                 if piece != '-':
                     squareIDX = self.get_square(row, col) - 1 # -1 because the square starts from 1
                     pieceIndex = self.pieceIndices(piece)
-                    hash ^= zobristtableCopy[squareIDX][pieceIndex]
+                    hash ^= zobristtable[squareIDX][pieceIndex]
         return hash
     
     def storeTransposition(self, board, depth, value, alpha, beta):

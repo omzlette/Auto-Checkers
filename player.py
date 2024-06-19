@@ -315,7 +315,7 @@ class Player():
         elif board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and ourTurn == 'b':
             ourVal -= DOGHOLE
 
-        # Back Rank (making the other side getting a king is better)
+        # Back Rank (making the other side getting a king harder is better)
         # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
         # +20 to the blocker
         backrankB = list(map(lambda x: True if x.lower() == 'b' else False, board[0]))
@@ -620,14 +620,13 @@ class AlphaBeta(Minimax):
     
     def hashBoard(self, board, zobristtable):
         hash = 0
-        zobristtableCopy = copy.deepcopy(zobristtable)
         for row in range(rows):
             for col in range(cols):
                 piece = board[row][col]
                 if piece != '-':
                     squareIDX = self.get_square(row, col) - 1 # -1 because the square starts from 1
                     pieceIndex = self.pieceIndices(piece)
-                    hash ^= zobristtableCopy[squareIDX][pieceIndex]
+                    hash ^= zobristtable[squareIDX][pieceIndex]
         return hash
     
     def storeTransposition(self, board, depth, value, alpha, beta):

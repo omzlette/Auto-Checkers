@@ -122,7 +122,7 @@ def match_images(img, template):
 
     return loc
 
-def getMove(prevBoard, newBoard, turn):
+def getMove(prevBoard, newBoard, turn, numGames):
     convertTurn = {'b': (1, 3), 'w': (2, 4)}
     selected = None
     move = None
@@ -136,10 +136,16 @@ def getMove(prevBoard, newBoard, turn):
                 move = (row, col)
 
     if selected is not None and move is not None and pieceType is not None:
-        if pieceType == 1 and move[0] == 7:
-            pieceType = 3
-        elif pieceType == 2 and move[0] == 0:
-            pieceType = 4
+        if numGames % 2 == 0:
+            if pieceType == 1 and move[0] == 7:
+                pieceType = 3
+            elif pieceType == 2 and move[0] == 0:
+                pieceType = 4
+        else:
+            if pieceType == 1 and move[0] == 0:
+                pieceType = 3
+            elif pieceType == 2 and move[0] == 7:
+                pieceType = 4
 
     return selected, move, pieceType
 
@@ -160,7 +166,7 @@ def getBoardState(boardimg, corners):
                     break
     return board, sorted_pieces
 
-def update_board_state(prevBoard, currBoard, turn):
+def update_board_state(prevBoard, currBoard, turn, numGames):
     convertTurn = {'b': (1, 3), 'w': (2, 4)}
     otherPlayer = 'b' if turn == 'w' else 'w'
     updated_board = copy.deepcopy(prevBoard)
@@ -169,7 +175,7 @@ def update_board_state(prevBoard, currBoard, turn):
     for row in range(8):
         for col in range(8):
             if currBoard[row][col] == 1 and prevBoard[row][col] == 0:
-                _, _, pieceType = getMove(prevBoard, currBoard, turn)
+                _, _, pieceType = getMove(prevBoard, currBoard, turn, numGames)
                 updated_board[row][col] = pieceType
             elif currBoard[row][col] == 0 and prevBoard[row][col] != 0:
                 updated_board[row][col] = 0
@@ -270,14 +276,21 @@ def main():
                     for row in currBoard:
                         f.write(f'{row}\n')
                 # get the move
-                selected, move, _ = getMove(prevBoard, currBoard, turn)
+                selected, move, _ = getMove(prevBoard, currBoard, turn, numGames)
 
                 if selected is not None and move is not None:
                     if numGames % 2 != 0:
                         selected = (7 - selected[0], 7 - selected[1])
                         move = (7 - move[0], 7 - move[1])
                     
-                    _, capturedPiece = update_board_state(prevBoard, currBoard, turn)
+                    print('1.Current board:')
+                    for row in currBoard:
+                        print(row)
+                    print('1. Previous board:')
+                    for row in prevBoard:
+                        print(row)
+
+                    _, capturedPiece = update_board_state(prevBoard, currBoard, turn, numGames)
                     # send the move
                     if len(capturedPiece) < 2:
                         TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
@@ -291,7 +304,7 @@ def main():
                             print("Move sent successfully")
                             # update the board state
                             currBoard, _ = getBoardState(screen_binary, corners)
-                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn, numGames)
                             selected = None
                             move = None
                             turn = response.replace('ACK', '')
@@ -301,11 +314,18 @@ def main():
                         currBoard, _ = getBoardState(screen_binary, corners)
                         selectedList, moves = getMultipleCapture(prevBoard, currBoard, turn, capturedPiece)
                         countNum = 0
+                        print('Multiple capture detected')
+                        print('2. Current board:')
+                        for row in currBoard:
+                            print(row)
+                        print('2. Previous board:')
+                        for row in prevBoard:
+                            print(row)
                         while countNum < len(selectedList):
                             print(f'Sending move {countNum + 1} of {len(selectedList)}')
                             print(f'Selected: {selectedList[countNum]}, Move: {moves[countNum]}')
-                            with open('debug-board.txt', 'a') as f:
-                                f.write(f'{selectedList[countNum]}, {moves[countNum]}\n')
+                            # with open('debug-board.txt', 'a') as f:
+                            #     f.write(f'{selectedList[countNum]}, {moves[countNum]}\n')
                             time.sleep(0.1)
                             selected, move = selectedList[countNum], moves[countNum]
                             if numGames % 2 != 0:
@@ -324,13 +344,14 @@ def main():
                                 print("Move not sent")
                                 break
                         
-                        if countNum == len(selectedList):
+                        if countNum >= len(selectedList):
                             # update the board state
                             currBoard, _ = getBoardState(screen_binary, corners)
-                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn, numGames)
                             selected = None
                             move = None
-                            turn = response.replace('ACK', '')
+                            time.sleep(0.5)
+                            turn = 'w' if turn == 'b' else 'b'
                     # time.sleep(0.5)
                 
             else:

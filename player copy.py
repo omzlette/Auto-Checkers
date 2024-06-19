@@ -1,5 +1,5 @@
-# import pygame
-# from pygame.locals import *
+import pygame
+from pygame.locals import *
 import numpy as np
 import copy
 import random
@@ -173,6 +173,7 @@ class Player():
                         else:
                             mandatory_moves.append([row, col])
                         if board[row][col] == 'b' and row + 2 == 7:
+                            # If the piece is at the end of the board, it's promoted to king and stops continuing the capture
                             break
                 elif board[row][col].lower() == 'w' and turn == 'w':
                     if self.can_capture(row, col, board)[1]:
@@ -182,6 +183,7 @@ class Player():
                         else:
                             mandatory_moves.append([row, col])
                         if board[row][col] == 'w' and row - 2 == 0:
+                            # If the piece is at the end of the board, it's promoted to king and stops continuing the capture
                             break
         return mandatory_moves if mandatory_moves else []
     
@@ -211,14 +213,8 @@ class Player():
         return moves
     
     def update_board(self, board, piece, move):
-        tempBoard = copy.deepcopy(board)
-        with open('/home/estel/Auto-Checkers/debug.txt', 'a') as f:
-            f.write(f'{piece, move, self.turn}\n')
-        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, tempBoard)
-        # debug
-        with open('/home/estel/Auto-Checkers/debug.txt', 'a') as f:
-            f.write(f'{self.selectedPiece}, {self.validMoves}, {self.capturePos}\n')
-        board, turn = self.move_piece(move, self.turn, tempBoard)
+        self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
+        board, turn = self.move_piece(move, self.turn, board)
         return board, turn
 
     def simulate_game(self, piece, move, turn, board):
@@ -248,7 +244,11 @@ class Player():
 
         return moveList[::-1]
     
-    def evaluate_board(self, board):
+    def evaluate_board(self, board, maximizing=True):
+        # Evaluation function for the board
+        # The bot is always maximizing, the opponent is always minimizing
+        # Can only be used for implementing algorithms that require evaluation function
+
         PIECECOUNT = 100
         KINGPIECE = 50
         TRAPPEDKING = 50 # negative points
@@ -262,23 +262,27 @@ class Player():
             totalPieces += sum(list(map(lambda x: True if x.lower() in ['b', 'w'] else False, board[row])))
 
         # Multiplier for making the bot favor more pieces
-        # if totalPieces < 8:
-        #     MULTIPLIER = 5/6
+        if totalPieces < 8:
+            MULTIPLIER = 5/6
+        elif totalPieces >= 8 and totalPieces <= 10:
+            MULTIPLIER = 1
+        elif totalPieces >= 11 and totalPieces <= 13:
+            MULTIPLIER = 7/6
+        else:
+            MULTIPLIER = 4/3
 
-        ourTurn = self.turn
-        oppTurn = 'w' if self.turn == 'b' else 'b'
-        ourVal = 3 # Starting at 3 for the turn based points
+        ourTurn = self.botTurn if maximizing else self.oppTurn
+        oppTurn = self.oppTurn if maximizing else self.botTurn
+        ourVal = 3 # Turn value
         oppVal = 0
 
-        kingMoves = {}
-        
         for row in range(rows):
             for col in range(cols):
                 # No. of pieces
                 if board[row][col].lower() == ourTurn:
-                    ourVal += PIECECOUNT
+                    ourVal += PIECECOUNT * MULTIPLIER
                 elif board[row][col].lower() == oppTurn:
-                    oppVal += PIECECOUNT
+                    oppVal += PIECECOUNT * MULTIPLIER
                 # No. of kings and trapped kings (Added on top of pieces)
                 if board[row][col] == ourTurn.upper():
                     ourVal += KINGPIECE
@@ -293,24 +297,36 @@ class Player():
 
                 # Runaway Checkers
                 # If the bot has a path to become a king, it's better for the bot
-                if board[row][col] == ourTurn and row >= 4:
+                if board[row][col] == 'b' and row >= 4:
                     runaway = self.runawayCheckers(board, [row, col])
                     numMovestoKing = 7 - row
                     if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                        ourVal += KINGPIECE - (numMovestoKing * 3)
-                elif board[row][col] == oppTurn and row <= 3:
+                        if ourTurn == 'b':
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
+                        elif oppTurn == 'b':
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                
+                if board[row][col] == 'w' and row <= 3:
                     runaway = self.runawayCheckers(board, [row, col])
                     numMovestoKing = row
                     if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                        oppVal += KINGPIECE - (numMovestoKing * 3)
+                        if oppTurn == 'w': 
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                        elif ourTurn == 'w':
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
 
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
-        if board[7][6].lower() == 'w' and board[6][7].lower() == 'b':
+        if board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and ourTurn == 'w':
             ourVal -= DOGHOLE
-        if board[0][1].lower() == 'b' and board[1][0].lower() == 'w':
+        elif board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and oppTurn == 'w':
             oppVal -= DOGHOLE
+        
+        if board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and oppTurn == 'b':
+            oppVal -= DOGHOLE
+        elif board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and ourTurn == 'b':
+            ourVal -= DOGHOLE
 
         # Back Rank (making the other side getting a king is better)
         # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
@@ -321,10 +337,15 @@ class Player():
         backrankBCount = sum(backrankB)
         backrankWCount = sum(backrankW)
 
-        if backrankBCount > backrankWCount:
+        if backrankBCount > backrankWCount and ourTurn == 'b':
             ourVal += BACKRANK
-        elif backrankWCount > backrankBCount:
-            oppVal += BACKRANK        
+        elif backrankBCount > backrankWCount and oppTurn == 'b':
+            oppVal += BACKRANK
+
+        if backrankWCount > backrankBCount and ourTurn == 'w':
+            ourVal += BACKRANK
+        elif backrankWCount > backrankBCount and oppTurn == 'w':
+            oppVal += BACKRANK
 
         # Win/Lose/Draw
         if is_game_over(board, self.movesDone) == ourTurn:
@@ -342,21 +363,21 @@ class User(Player):
         super().__init__(turn, board, movesDone)
         self.user = True
 
-    # def get_mouse_pos(self):
-    #     x, y = pygame.mouse.get_pos()
-    #     row, col = y // squareSize, x // squareSize
-    #     return row, col
+    def get_mouse_pos(self):
+        x, y = pygame.mouse.get_pos()
+        row, col = y // squareSize, x // squareSize
+        return row, col
     
-    # def handle_mouse_click(self, row, col, board):
-    #     turn = None
-    #     selectedPiece = []
-    #     if self.selectedPiece == []:
-    #         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
-    #         board, turn = board, self.turn
-    #     else:
-    #         selectedPiece = self.selectedPiece
-    #         board, turn = self.move_piece([row, col], self.turn, board)
-    #     return board, turn, selectedPiece
+    def handle_mouse_click(self, row, col, board):
+        turn = None
+        selectedPiece = []
+        if self.selectedPiece == []:
+            self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
+            board, turn = board, self.turn
+        else:
+            selectedPiece = self.selectedPiece
+            board, turn = self.move_piece([row, col], self.turn, board)
+        return board, turn, selectedPiece
 
 class Minimax(Player):
     def __init__(self, turn, board, movesDone):
@@ -367,10 +388,28 @@ class Minimax(Player):
         self.timer = 0
         self.timeLimit = 20
 
+    def perform_all_move(self, piece, initialMove, turn, board):
+        new_board = self.simulate_game(piece, initialMove, turn, board)
+        finalMove = initialMove
+        move_sequence = [initialMove]
+
+        while True:
+            captureMoves, _ = self.can_capture(finalMove[0], finalMove[1], new_board)
+            if captureMoves != []:
+                for captureMove in captureMoves:
+                    new_board = self.simulate_game(finalMove, captureMove, turn, new_board)
+                    move_sequence.append(captureMove)
+                    finalMove = captureMove
+            else:
+                break
+
+        return new_board, initialMove, move_sequence
+
     def iterativeDeepening(self, board):
         bestPiece = None
         bestMove = None
         bestValue = -np.inf
+        bestDepth = 1
         depth = 1
         self.timer = time.time()
         while True:
@@ -378,11 +417,13 @@ class Minimax(Player):
             value, piece, move = self.minimax(board, depth, True)
             # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
             if value > bestValue:
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
             if value >= 2000:
                 # If the bot wins, return the move
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
@@ -393,16 +434,16 @@ class Minimax(Player):
 
     def play(self, board):
         # self.prevCount = countBlack(board) + countWhite(board)
-        mandatory_move = self.get_mandatory_capture(self.botTurn, board)
-        if len(mandatory_move) == 1:
-            bestPiece, bestMove = mandatory_move[0], self.get_valid_moves(mandatory_move[0][0], mandatory_move[0][1], board)[0][0]
+        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+        if len(mandatory_moves) == 1:
+            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
         else:
             _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
         
     def minimax(self, board, depth, maximizing):
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer > self.timeLimit:
-            return self.evaluate_board(board), None, None
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
+            return self.evaluate_board(board, maximizing), None, None
 
         if maximizing:
             maxEval = -np.inf
@@ -410,13 +451,13 @@ class Minimax(Player):
             bestMove = None
             movesdict = self.get_all_moves(self.botTurn, board)
             for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                for initialMove in movetolist:
+                    new_board, _, _ = self.perform_all_move(piece, initialMove, self.botTurn, board)
                     eval, _, _ = self.minimax(new_board, depth-1, False)
                     maxEval = max(maxEval, eval)
                     if maxEval == eval:
                         bestPiece = piece
-                        bestMove = moveto
+                        bestMove = initialMove
 
             return maxEval, bestPiece, bestMove
         
@@ -426,15 +467,16 @@ class Minimax(Player):
             bestMove = None
             movesdict = self.get_all_moves(self.oppTurn, board)
             for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                for initialMove in movetolist:
+                    new_board, _, _ = self.perform_all_move(piece, initialMove, self.oppTurn, board)
                     eval, _, _ = self.minimax(new_board, depth-1, True)
                     minEval = min(minEval, eval)
                     if minEval == eval:
                         bestPiece = piece
-                        bestMove = moveto
+                        bestMove = initialMove
 
             return minEval, bestPiece, bestMove
+
 
 class AlphaBeta(Minimax):
     def __init__(self, turn, board, movesDone):
@@ -444,9 +486,9 @@ class AlphaBeta(Minimax):
 
     def play(self, board):
         # self.prevCount = countBlack(board) + countWhite(board)
-        mandatory_move = self.get_mandatory_capture(self.botTurn, board)
-        if len(mandatory_move) == 1:
-            bestPiece, bestMove = mandatory_move[0], self.get_valid_moves(mandatory_move[0][0], mandatory_move[0][1], board)[0][0]
+        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+        if len(mandatory_moves) == 1:
+            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
         else:
             _, bestPiece, bestMove = self.iterativeDeepening(board)
         return bestPiece, bestMove
@@ -455,7 +497,7 @@ class AlphaBeta(Minimax):
         bestPiece = None
         bestMove = None
         bestValue = -np.inf
-        bestDepth = None
+        bestDepth = 1
         depth = 1
         self.timer = time.time()
         while True:
@@ -463,20 +505,20 @@ class AlphaBeta(Minimax):
             value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
             # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
             if value >= bestValue:
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
-                bestDepth = depth
             if value >= 2000:
                 # If the bot wins, return the move
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
-                bestDepth = depth
                 break
             depth += 1
         with open('/home/estel/Auto-Checkers/depthExperiment.txt', 'a') as f:
-            f.write(f'{depth}, {bestValue}, {bestPiece}, {bestMove}, {bestDepth}, {self.turn}\n')
+            f.write(f'Max: {depth}, Best: {bestDepth}, {bestValue}, {bestPiece}, {bestMove}\n')
         # print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
         return bestValue, bestPiece, bestMove
 
@@ -486,7 +528,7 @@ class AlphaBeta(Minimax):
         bestMove = None
         movesdict = self.get_all_moves(self.botTurn, board)
 
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b'] or time.time() - self.timer >= self.timeLimit:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -513,8 +555,8 @@ class AlphaBeta(Minimax):
             bestMove = None
             movesdict = self.get_all_moves(self.botTurn, board)
             for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.botTurn, board)
+                for initialMove in movetolist:
+                    new_board, _, _ = self.perform_all_move(piece, initialMove, self.botTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, False)
                     maxEval = max(maxEval, eval)
                     alpha = max(alpha, eval)
@@ -522,7 +564,7 @@ class AlphaBeta(Minimax):
                         break
                     if maxEval == eval:
                         bestPiece = piece
-                        bestMove = moveto
+                        bestMove = initialMove
             
             self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
@@ -533,8 +575,8 @@ class AlphaBeta(Minimax):
             bestMove = None
             movesdict = self.get_all_moves(self.oppTurn, board)
             for piece, movetolist in movesdict.items():
-                for moveto in movetolist:
-                    new_board = self.simulate_game(piece, moveto, self.oppTurn, board)
+                for initialMove in movetolist:
+                    new_board, _, _ = self.perform_all_move(piece, initialMove, self.oppTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, True)
                     minEval = min(minEval, eval)
                     beta = min(beta, eval)
@@ -542,7 +584,7 @@ class AlphaBeta(Minimax):
                         break
                     if minEval == eval:
                         bestPiece = piece
-                        bestMove = moveto
+                        bestMove = initialMove
 
             self.storeTransposition(board, depth, minEval, alpha, beta)
             return minEval, bestPiece, bestMove

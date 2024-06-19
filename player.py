@@ -33,29 +33,29 @@ class Player():
             if [row, col] in self.mandatory_moves:
                 selectedPiece = [row, col]
                 validMoves, capturePos = self.get_valid_moves(row, col, board)
-            else:
-                print("You must capture @", self.mandatory_moves, "selected piece:", [row, col])
+            # else:
+            #     print("You must capture @", self.mandatory_moves, "selected piece:", [row, col])
         else:
             if board[row][col].lower() == 'b':
                 if turn == 'b':
                     validMoves, capturePos = self.get_valid_moves(row, col, board)
                     if validMoves != []:
                         selectedPiece = [row, col]
-                    else:
-                        print("No valid moves")
-                else:
-                    print("Not your turn (White turn)")
+                #     else:
+                #         print("No valid moves")
+                # else:
+                #     print("Not your turn (White turn)")
             elif board[row][col].lower() == 'w':
                 if turn == 'w':
                     validMoves, capturePos = self.get_valid_moves(row, col, board)
                     if validMoves != []:
                         selectedPiece = [row, col]
-                    else:
-                        print("No valid moves")
-                else:
-                    print("Not your turn (Black turn)")
-            else:
-                print("No piece selected")
+            #         else:
+            #             print("No valid moves")
+            #     else:
+            #         print("Not your turn (Black turn)")
+            # else:
+            #     print("No piece selected")
         return selectedPiece, validMoves, capturePos
     
     def move_piece(self, moveto, turn, board):
@@ -396,24 +396,27 @@ class Minimax(Player):
         bestPiece = None
         bestMove = None
         bestValue = -np.inf
+        bestDepth = None
         depth = 1
         self.timer = time.time()
         while True:
             if time.time() - self.timer > self.timeLimit: break
             value, piece, move = self.minimax(board, depth, True)
-            print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
+            # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
             if value > bestValue:
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
             if value >= 2000:
                 # If the bot wins, return the move
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
                 break
             depth += 1
-        print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
+        # print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
         return bestValue, bestPiece, bestMove
 
     def play(self, board):
@@ -481,24 +484,29 @@ class AlphaBeta(Minimax):
         bestPiece = None
         bestMove = None
         bestValue = -np.inf
+        bestDepth = None
         depth = 1
         self.timer = time.time()
         while True:
             if time.time() - self.timer > self.timeLimit: break
             value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
-            print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
+            # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
             if value >= bestValue:
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
             if value >= 2000:
                 # If the bot wins, return the move
+                bestDepth = depth
                 bestValue = value
                 bestPiece = piece
                 bestMove = move
                 break
             depth += 1
-        print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
+        with open('/home/estel/Auto-Checkers/depthExperiment.txt', 'a') as f:
+            f.write(f'Max: {depth}, Best: {bestDepth}, {bestValue}, {bestPiece}, {bestMove}\n')
+        # print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
         return bestValue, bestPiece, bestMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):

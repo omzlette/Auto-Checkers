@@ -23,7 +23,7 @@ def main():
     running = True
     nummoves = 0
     
-    while numGames < 100:
+    while numGames < 20:
         player1, player2, board = initGame(numGames)
         isGameOver = False
         running = True

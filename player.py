@@ -308,27 +308,27 @@ class Player():
                 # No. of pieces
                 if board[row][col].lower() == ourTurn:
                     ourVal += PIECECOUNT * MULTIPLIER
-                    vprint(f'Our Piece Count ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                    vprint(f'Our Piece Count ({PIECECOUNT * MULTIPLIER}): {ourVal}, Total Value: {ourVal - oppVal}')
                 elif board[row][col].lower() == oppTurn:
                     oppVal += PIECECOUNT * MULTIPLIER
-                    vprint(f'Opponent Piece Count ({oppTurn}): {oppVal}, Value: {ourVal - oppVal}')
+                    vprint(f'Opponent Piece Count ({PIECECOUNT * MULTIPLIER}): {oppVal}, Total Value: {ourVal - oppVal}')
                 # No. of kings and trapped kings (Added on top of pieces)
                 if board[row][col] == ourTurn.upper():
                     ourVal += KINGPIECE
-                    vprint(f'Our King Piece ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                    vprint(f'Our King Piece ({KINGPIECE}): {ourVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(ourTurn, board, [row, col])
                     vprint('Our King Moves:', kingMoves)
-                    if len(kingMoves[(row, col)]) <= 1:
+                    if len(kingMoves[(row, col)]) == 0:
                         ourVal -= TRAPPEDKING
-                        vprint(f'Our Trapped King ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                        vprint(f'Our Trapped King (-{TRAPPEDKING}): {ourVal}, Total Value: {ourVal - oppVal}')
                 elif board[row][col] == oppTurn.upper():
                     oppVal += KINGPIECE
-                    vprint(f'Opponent King Piece ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                    vprint(f'Opponent King Piece ({KINGPIECE}): {oppVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(oppTurn, board, [row, col])
                     vprint('Opponent King Moves:', kingMoves)
-                    if len(kingMoves[(row, col)]) <= 1:
+                    if len(kingMoves[(row, col)]) == 0:
                         oppVal -= TRAPPEDKING
-                        vprint(f'Opponent Trapped King ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                        vprint(f'Opponent Trapped King (-{TRAPPEDKING}): {oppVal}, Total Value: {ourVal - oppVal}')
 
                 # Runaway Checkers
                 # If the bot has a path to become a king, it's better for the bot
@@ -339,14 +339,14 @@ class Player():
                             numMovestoKing = 7 - row
                             ourVal += KINGPIECE - (numMovestoKing * 3)
                             ourRunawayAdded = True
-                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                            vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
                     elif ourTurn == 'w' and row <= 3:
                         runawayFlag = self.runawayCheckers(board, [row, col])
                         if runawayFlag:
                             numMovestoKing = row
                             ourVal += KINGPIECE - (numMovestoKing * 3)
                             ourRunawayAdded = True
-                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                            vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
                 elif board[row][col] == oppTurn and not oppRunawayAdded:
                     if oppTurn == 'b' and row >= 4:
                         runawayFlag = self.runawayCheckers(board, [row, col])
@@ -354,30 +354,30 @@ class Player():
                             numMovestoKing = 7 - row
                             oppVal += KINGPIECE - (numMovestoKing * 3)
                             oppRunawayAdded = True
-                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                            vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
                     elif oppTurn == 'w' and row <= 3:
                         runawayFlag = self.runawayCheckers(board, [row, col])
                         if runawayFlag:
                             numMovestoKing = row
                             oppVal += KINGPIECE - (numMovestoKing * 3)
                             oppRunawayAdded = True
-                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                            vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
         if board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and ourTurn == 'w':
             ourVal -= DOGHOLE
-            vprint(f'Our Dog Hole ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Our Dog Hole ({DOGHOLE}): {ourVal}, Total Value: {ourVal - oppVal}')
         elif board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and oppTurn == 'w':
             oppVal -= DOGHOLE
-            vprint(f'Opponent Dog Hole ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Opponent Dog Hole ({DOGHOLE}): {oppVal}, Total Value: {ourVal - oppVal}')
         
         if board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and oppTurn == 'b':
             oppVal -= DOGHOLE
-            vprint(f'Opponent Dog Hole ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Opponent Dog Hole ({DOGHOLE}): {oppVal}, Total Value: {ourVal - oppVal}')
         elif board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and ourTurn == 'b':
             ourVal -= DOGHOLE
-            vprint(f'Our Dog Hole ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Our Dog Hole ({DOGHOLE}): {ourVal}, Total Value: {ourVal - oppVal}')
 
         # Back Rank (making the other side getting a king harder is better)
         # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
@@ -392,17 +392,17 @@ class Player():
 
         if backrankBCount > backrankWCount and ourTurn == 'b':
             ourVal += BACKRANK
-            vprint(f'Our Back Rank ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Our Back Rank ({BACKRANK}): {ourVal}, Total Value: {ourVal - oppVal}')
         elif backrankBCount > backrankWCount and oppTurn == 'b':
             oppVal += BACKRANK
-            vprint(f'Opponent Back Rank ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Opponent Back Rank ({BACKRANK}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         elif backrankWCount > backrankBCount and ourTurn == 'w':
             ourVal += BACKRANK
-            vprint(f'Our Back Rank ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Our Back Rank ({BACKRANK}): {ourVal}, Total Value: {ourVal - oppVal}')
         elif backrankWCount > backrankBCount and oppTurn == 'w':
             oppVal += BACKRANK
-            vprint(f'Opponent Back Rank ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+            vprint(f'Opponent Back Rank ({BACKRANK}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Win/Lose/Draw
         if is_game_over(board, self.movesDone) == ourTurn:

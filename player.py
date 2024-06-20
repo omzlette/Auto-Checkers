@@ -218,6 +218,27 @@ class Player():
         self.init_variables()
         return new_board
 
+    # def runawayCheckers(self, board, piece):
+    #     # Check if the piece has a path of becoming a king
+    #     blackDirections = [[1, -1], [1, 1]]
+    #     whiteDirections = [[-1, -1], [-1, 1]]
+
+    #     pieceRow = piece[0]
+    #     pieceCol = piece[1]
+    #     pieceColor = board[pieceRow][pieceCol].lower()
+    #     moveList = []
+
+    #     for dir in blackDirections if pieceColor == 'b' else whiteDirections:
+    #         checkRow, checkCol = pieceRow + dir[0], pieceCol + dir[1]
+    #         if 0 <= checkRow <= 7 and 0 <= checkCol <= 7 and board[checkRow][checkCol] == '-':
+    #             tempBoard = copy.deepcopy(board)
+    #             tempBoard[pieceRow][pieceCol], tempBoard[checkRow][checkCol] = '-', pieceColor
+    #             moveList = self.runawayCheckers(tempBoard, (checkRow, checkCol))
+    #             moveList.append((checkRow, checkCol))
+    #             print(moveList, (checkRow, checkCol))
+
+    #     return moveList[::-1]
+
     def runawayCheckers(self, board, piece):
         # Check if the piece has a path of becoming a king
         blackDirections = [[1, -1], [1, 1]]
@@ -226,19 +247,47 @@ class Player():
         pieceRow = piece[0]
         pieceCol = piece[1]
         pieceColor = board[pieceRow][pieceCol].lower()
-        moveList = []
 
-        for dir in blackDirections if pieceColor == 'b' else whiteDirections:
-            checkRow, checkCol = pieceRow + dir[0], pieceCol + dir[1]
+        if pieceColor == 'b':
+            directions = blackDirections
+            oppColor = 'w'
+        else:
+            directions = whiteDirections
+            oppColor = 'b'
+
+        def canMove(pieceRow, pieceCol, direction):
+            checkRow, checkCol = pieceRow + direction[0], pieceCol + direction[1]
+            oppRowL, oppColL = checkRow + direction[0], checkCol + directions[0][1]
+            oppRowR, oppColR = checkRow + direction[0], checkCol + directions[1][1]
             if 0 <= checkRow <= 7 and 0 <= checkCol <= 7 and board[checkRow][checkCol] == '-':
-                tempBoard = copy.deepcopy(board)
-                tempBoard[pieceRow][pieceCol], tempBoard[checkRow][checkCol] = '-', pieceColor
-                moveList = self.runawayCheckers(tempBoard, (checkRow, checkCol))
-                moveList.append((checkRow, checkCol))
+                if 0 <= oppRowR <= 7 and 0 <= oppColR <= 7 and board[oppRowR][oppColR].lower() != oppColor:
+                    if 0 <= oppRowL <= 7 and 0 <= oppColL <= 7 and board[oppRowL][oppColL].lower() != oppColor:
+                        return True, checkRow, checkCol
+            return False, -1, -1
 
-        return moveList[::-1]
+        def canBridge(pieceRow, pieceCol, direction):
+            bridgeRow, bridgeCol = pieceRow, pieceCol + (2 * direction[1])
+            landingRow, landingCol = pieceRow + direction[0], pieceCol + direction[1]
+            oppRow, oppCol = landingRow + direction[0], pieceCol
+            if landingRow >= 0 and landingRow < 8 and landingCol >= 0 and landingCol < 8 and board[landingRow][landingCol] == '-':
+                if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol].lower() == pieceColor:
+                    if 0 <= oppRow <= 7 and 0 <= oppCol <= 7 and board[oppRow][oppCol].lower() == oppColor:
+                        return True, landingRow, landingCol
+            return False, -1, -1
+
+        for direction in directions:
+            canMoveFlag, _, _ = canMove(pieceRow, pieceCol, direction)
+            if canMoveFlag:
+                return True
+            else:
+                canBridgeFlag, _, _ = canBridge(pieceRow, pieceCol, direction)
+                if canBridgeFlag:
+                    return True
+
+        return False
     
-    def evaluate_board(self, board, maximizing=True):
+    def evaluate_board(self, board, verbose=False):
+        vprint = print if verbose else lambda *a, **k: None
         # Evaluation function for the board
         # The bot is always maximizing, the opponent is always minimizing
         # Can only be used for implementing algorithms that require evaluation function
@@ -264,9 +313,14 @@ class Player():
             MULTIPLIER = 7/6
         else:
             MULTIPLIER = 4/3
+        # MULTIPLIER = 1
 
-        ourTurn = self.botTurn if maximizing else self.oppTurn
-        oppTurn = self.oppTurn if maximizing else self.botTurn
+        ourRunawayAdded = False
+        oppRunawayAdded = False
+
+        ourTurn = self.botTurn
+        oppTurn = self.oppTurn
+        vprint(f'Bot Turn: {ourTurn}, Opponent Turn: {oppTurn}')
         ourVal = 3 # Turn value
         oppVal = 0
 
@@ -275,45 +329,76 @@ class Player():
                 # No. of pieces
                 if board[row][col].lower() == ourTurn:
                     ourVal += PIECECOUNT * MULTIPLIER
+                    vprint(f'Our Piece Count ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
                 elif board[row][col].lower() == oppTurn:
                     oppVal += PIECECOUNT * MULTIPLIER
+                    vprint(f'Opponent Piece Count ({oppTurn}): {oppVal}, Value: {ourVal - oppVal}')
                 # No. of kings and trapped kings (Added on top of pieces)
                 if board[row][col] == ourTurn.upper():
                     ourVal += KINGPIECE
+                    vprint(f'Our King Piece ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(ourTurn, board, [row, col])
+                    vprint('Our King Moves:', kingMoves)
                     if len(kingMoves[(row, col)]) <= 1:
                         ourVal -= TRAPPEDKING
+                        vprint(f'Our Trapped King ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
                 elif board[row][col] == oppTurn.upper():
                     oppVal += KINGPIECE
+                    vprint(f'Opponent King Piece ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(oppTurn, board, [row, col])
+                    vprint('Opponent King Moves:', kingMoves)
                     if len(kingMoves[(row, col)]) <= 1:
                         oppVal -= TRAPPEDKING
+                        vprint(f'Opponent Trapped King ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
 
                 # Runaway Checkers
                 # If the bot has a path to become a king, it's better for the bot
-                if board[row][col] == ourTurn and row >= 4:
-                    runaway = self.runawayCheckers(board, [row, col])
-                    numMovestoKing = 7 - row
-                    if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                        ourVal += KINGPIECE - (numMovestoKing * 3)
-                elif board[row][col] == oppTurn and row <= 3:
-                    runaway = self.runawayCheckers(board, [row, col])
-                    numMovestoKing = row
-                    if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                        oppVal += KINGPIECE - (numMovestoKing * 3)
-
+                if board[row][col] == ourTurn and not ourRunawayAdded:
+                    if ourTurn == 'b' and row >= 4:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = 7 - row
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
+                            ourRunawayAdded = True
+                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                    elif ourTurn == 'w' and row <= 3:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = row
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
+                            ourRunawayAdded = True
+                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                elif board[row][col] == oppTurn and not oppRunawayAdded:
+                    if oppTurn == 'b' and row >= 4:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = 7 - row
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                            oppRunawayAdded = True
+                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                    elif oppTurn == 'w' and row <= 3:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = row
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                            oppRunawayAdded = True
+                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
         if board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and ourTurn == 'w':
             ourVal -= DOGHOLE
+            vprint(f'Our Dog Hole ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
         elif board[7][6].lower() == 'w' and board[6][7].lower() == 'b' and oppTurn == 'w':
             oppVal -= DOGHOLE
+            vprint(f'Opponent Dog Hole ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
         
         if board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and oppTurn == 'b':
             oppVal -= DOGHOLE
+            vprint(f'Opponent Dog Hole ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
         elif board[0][1].lower() == 'b' and board[1][0].lower() == 'w' and ourTurn == 'b':
             ourVal -= DOGHOLE
+            vprint(f'Our Dog Hole ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
 
         # Back Rank (making the other side getting a king harder is better)
         # If one side have lower opportunity to get a king by the other side blocking, it's better for the blocker. 
@@ -323,25 +408,34 @@ class Player():
         
         backrankBCount = sum(backrankB)
         backrankWCount = sum(backrankW)
+        vprint(f'Back Rank: {backrankB}, {backrankW}')
+        vprint(f'Back Rank: {backrankBCount}, {backrankWCount}')
 
         if backrankBCount > backrankWCount and ourTurn == 'b':
             ourVal += BACKRANK
-        elif backrankWCount > backrankBCount and oppTurn == 'b':
+            vprint(f'Our Back Rank ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+        elif backrankBCount > backrankWCount and oppTurn == 'b':
             oppVal += BACKRANK
+            vprint(f'Opponent Back Rank ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
 
-        if backrankWCount > backrankBCount and ourTurn == 'w':
+        elif backrankWCount > backrankBCount and ourTurn == 'w':
             ourVal += BACKRANK
-        elif backrankBCount > backrankWCount and oppTurn == 'w':
+            vprint(f'Our Back Rank ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+        elif backrankWCount > backrankBCount and oppTurn == 'w':
             oppVal += BACKRANK
+            vprint(f'Opponent Back Rank ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Win/Lose/Draw
         if is_game_over(board, self.movesDone) == ourTurn:
             ourVal += GAMEOVER
+            vprint(f'Game Over ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
         elif is_game_over(board, self.movesDone) == oppTurn:
             oppVal += GAMEOVER
+            vprint(f'Game Over ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
         elif is_game_over(board, self.movesDone) == 'draw':
             ourVal += DRAW
             oppVal += DRAW
+            vprint(f'Draw: {ourVal}, Total Value: {ourVal - oppVal}')
 
         return ourVal - oppVal
 
@@ -430,7 +524,7 @@ class Minimax(Player):
         
     def minimax(self, board, depth, maximizing):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
-            return self.evaluate_board(board, maximizing), None, None
+            return self.evaluate_board(board), None, None
 
         if maximizing:
             maxEval = -np.inf

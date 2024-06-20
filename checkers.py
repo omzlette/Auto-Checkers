@@ -59,13 +59,13 @@ class Checkers:
                     self.screen.blit(text, (col * squareSize + squareSize // 2 - text.get_width() // 2, row * squareSize + squareSize // 2 - text.get_height() // 2))
     
     def debug_text(self):
-        squareCount = 0
+        squareCount = 32
         for row in range(rows):
             for col in range((row % 2)-1, cols, 2):
                 if col != -1:
-                    squareCount += 1
                     font = pygame.font.SysFont('Arial', 20)
                     text = font.render(f'{squareCount}', True, (255, 0, 0))
+                    squareCount -= 1
                     self.screen.blit(text, (col * squareSize + squareSize - text.get_width(), row * squareSize + squareSize - text.get_height()))
 
     def updateMovesDict(self, piece, move, turn):

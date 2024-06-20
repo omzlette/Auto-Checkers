@@ -218,27 +218,6 @@ class Player():
         self.init_variables()
         return new_board
 
-    # def runawayCheckers(self, board, piece):
-    #     # Check if the piece has a path of becoming a king
-    #     blackDirections = [[1, -1], [1, 1]]
-    #     whiteDirections = [[-1, -1], [-1, 1]]
-
-    #     pieceRow = piece[0]
-    #     pieceCol = piece[1]
-    #     pieceColor = board[pieceRow][pieceCol].lower()
-    #     moveList = []
-
-    #     for dir in blackDirections if pieceColor == 'b' else whiteDirections:
-    #         checkRow, checkCol = pieceRow + dir[0], pieceCol + dir[1]
-    #         if 0 <= checkRow <= 7 and 0 <= checkCol <= 7 and board[checkRow][checkCol] == '-':
-    #             tempBoard = copy.deepcopy(board)
-    #             tempBoard[pieceRow][pieceCol], tempBoard[checkRow][checkCol] = '-', pieceColor
-    #             moveList = self.runawayCheckers(tempBoard, (checkRow, checkCol))
-    #             moveList.append((checkRow, checkCol))
-    #             print(moveList, (checkRow, checkCol))
-
-    #     return moveList[::-1]
-
     def runawayCheckers(self, board, piece):
         # Check if the piece has a path of becoming a king
         blackDirections = [[1, -1], [1, 1]]
@@ -610,6 +589,14 @@ class AlphaBeta(Minimax):
         movesdict = self.get_all_moves(self.botTurn, board)
 
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
+            with open('/home/estel/Auto-Checkers/debug-alphabeta.txt', 'a') as f:
+                f.write(f'-'*20)
+                f.write(f'Bot Turn: {self.botTurn}\n')
+                f.write(f'Board:\n')
+                for row in board:
+                    f.write(' '.join(row) + '\n')
+                f.write(f'Evaluation: {self.evaluate_board(board)}\n')
+                f.write(f'-'*20)
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -671,27 +658,27 @@ class AlphaBeta(Minimax):
             return minEval, bestPiece, bestMove
             
     def squareMapping(self, square):
-        squareMapping = { 1: (0, 1),  2: (0, 3),  3: (0, 5),  4: (0, 7),
-                          5: (1, 0),  6: (1, 2),  7: (1, 4),  8: (1, 6),
-                          9: (2, 1), 10: (2, 3), 11: (2, 5), 12: (2, 7),
-                         13: (3, 0), 14: (3, 2), 15: (3, 4), 16: (3, 6),
-                         17: (4, 1), 18: (4, 3), 19: (4, 5), 20: (4, 7),
-                         21: (5, 0), 22: (5, 2), 23: (5, 4), 24: (5, 6),
-                         25: (6, 1), 26: (6, 3), 27: (6, 5), 28: (6, 7),
-                         29: (7, 0), 30: (7, 2), 31: (7, 4), 32: (7, 6)}
+        squareMapping = { 32: (0, 1),  31: (0, 3),  30: (0, 5),  29: (0, 7),
+                          28: (1, 0),  27: (1, 2),  26: (1, 4),  25: (1, 6),
+                          24: (2, 1), 23: (2, 3), 22: (2, 5), 21: (2, 7),
+                         20: (3, 0), 19: (3, 2), 18: (3, 4), 17: (3, 6),
+                         16: (4, 1), 15: (4, 3), 14: (4, 5), 13: (4, 7),
+                         12: (5, 0), 11: (5, 2), 10: (5, 4), 9: (5, 6),
+                         8: (6, 1), 7: (6, 3), 6: (6, 5), 5: (6, 7),
+                         4: (7, 0), 3: (7, 2), 2: (7, 4), 1: (7, 6)}
         row = squareMapping[square][0]
         col = squareMapping[square][1]
         return row, col
     
     def get_square(self, row, col):
-        squareMapping = {(0, 1): 1, (0, 3): 2, (0, 5): 3, (0, 7): 4,
-                         (1, 0): 5, (1, 2): 6, (1, 4): 7, (1, 6): 8,
-                         (2, 1): 9, (2, 3): 10, (2, 5): 11, (2, 7): 12,
-                         (3, 0): 13, (3, 2): 14, (3, 4): 15, (3, 6): 16,
-                         (4, 1): 17, (4, 3): 18, (4, 5): 19, (4, 7): 20,
-                         (5, 0): 21, (5, 2): 22, (5, 4): 23, (5, 6): 24,
-                         (6, 1): 25, (6, 3): 26, (6, 5): 27, (6, 7): 28,
-                         (7, 0): 29, (7, 2): 30, (7, 4): 31, (7, 6): 32}
+        squareMapping = {(0, 1): 32, (0, 3): 31, (0, 5): 30, (0, 7): 29,
+                         (1, 0): 28, (1, 2): 27, (1, 4): 26, (1, 6): 25,
+                         (2, 1): 24, (2, 3): 23, (2, 5): 22, (2, 7): 21,
+                         (3, 0): 20, (3, 2): 19, (3, 4): 18, (3, 6): 17,
+                         (4, 1): 16, (4, 3): 15, (4, 5): 14, (4, 7): 13,
+                         (5, 0): 12, (5, 2): 11, (5, 4): 10, (5, 6): 9,
+                         (6, 1): 8, (6, 3): 7, (6, 5): 6, (6, 7): 5,
+                         (7, 0): 4, (7, 2): 3, (7, 4): 2, (7, 6): 1}
         return squareMapping[(row, col)]
 
     #Zobrist Hashing

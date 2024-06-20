@@ -624,7 +624,7 @@ class AlphaBeta(Minimax):
                     if maxEval == eval:
                         bestPiece = piece
                         bestMove = initialMove
-                        
+
             # self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
         

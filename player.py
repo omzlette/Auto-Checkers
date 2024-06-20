@@ -619,12 +619,12 @@ class AlphaBeta(Minimax):
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, False)
                     maxEval = max(maxEval, eval)
                     alpha = max(alpha, maxEval)
+                    if beta <= alpha:
+                        break
                     if maxEval == eval:
                         bestPiece = piece
                         bestMove = initialMove
-                    if beta <= alpha:
-                        break
-            
+                        
             # self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
         
@@ -639,11 +639,11 @@ class AlphaBeta(Minimax):
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, True)
                     minEval = min(minEval, eval)
                     beta = min(beta, minEval)
+                    if beta <= alpha:
+                        break
                     if minEval == eval:
                         bestPiece = piece
                         bestMove = initialMove
-                    if beta <= alpha:
-                        break
 
             # self.storeTransposition(board, depth, minEval, alpha, beta)
             return minEval, bestPiece, bestMove

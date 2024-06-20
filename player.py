@@ -548,39 +548,29 @@ class AlphaBeta(Minimax):
         # self.prevCount = countBlack(board) + countWhite(board)
         mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
         if len(mandatory_moves) == 1:
-            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+            piece, move = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
         else:
-            _, bestPiece, bestMove = self.iterativeDeepening(board)
-        return bestPiece, bestMove
+            _, piece, move = self.iterativeDeepening(board)
+        return piece, move
 
     def iterativeDeepening(self, board):
-        bestPiece = None
-        bestMove = None
-        bestValue = -np.inf
-        bestDepth = None
+        lastDepth = 0
+        lastVal = -np.inf
+        lastPiece = None
+        lastMove = None
         depth = 1
         self.timer = time.time()
         while True:
             if time.time() - self.timer > self.timeLimit: break
             value, piece, move = self.alphaBeta(board, depth, -np.inf, np.inf, True)
-            # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
-            if value >= bestValue:
-                bestDepth = depth
-                bestValue = value
-                bestPiece = piece
-                bestMove = move
-            if value >= 2000:
-                # If the bot wins, return the move
-                bestDepth = depth
-                bestValue = value
-                bestPiece = piece
-                bestMove = move
-                break
+            lastDepth = depth
+            lastVal = value
+            lastPiece = piece
+            lastMove = move
             depth += 1
         with open('/home/estel/Auto-Checkers/depthExperiment.txt', 'a') as f:
-            f.write(f'Max: {depth}, Best: {bestDepth}, {bestValue}, {bestPiece}, {bestMove}\n')
-        # print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
-        return bestValue, bestPiece, bestMove
+            f.write(f'Depth: {depth}, Last Depth: {lastDepth} Piece: {lastPiece}, Move: {lastMove}\n')
+        return lastVal, lastPiece, lastMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):
         maxEval = -np.inf
@@ -591,7 +581,8 @@ class AlphaBeta(Minimax):
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
             with open('/home/estel/Auto-Checkers/debug-alphabeta.txt', 'a') as f:
                 f.write(f'-'*20)
-                f.write(f'Bot Turn: {self.botTurn}\n')
+                f.write(f'\nBot Turn: {self.botTurn}\n')
+                f.write(f'Moves: ')
                 f.write(f'Board:\n')
                 for row in board:
                     f.write(' '.join(row) + '\n')
@@ -627,12 +618,12 @@ class AlphaBeta(Minimax):
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.botTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, False)
                     maxEval = max(maxEval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
+                    alpha = max(alpha, maxEval)
                     if maxEval == eval:
                         bestPiece = piece
                         bestMove = initialMove
+                    if beta <= alpha:
+                        break
             
             # self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
@@ -647,12 +638,12 @@ class AlphaBeta(Minimax):
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.oppTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, True)
                     minEval = min(minEval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
+                    beta = min(beta, minEval)
                     if minEval == eval:
                         bestPiece = piece
                         bestMove = initialMove
+                    if beta <= alpha:
+                        break
 
             # self.storeTransposition(board, depth, minEval, alpha, beta)
             return minEval, bestPiece, bestMove

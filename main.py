@@ -84,7 +84,7 @@ def main():
                         board.updateMovesDict(tuple(selectedPiece), (row, col), 'b')
                     else:
                         board.updateMovesDict(tuple(bestPiece), tuple(bestMove), 'w')
-                    with open('/home/estel/Auto-Checkers/results.txt', 'a') as f:
+                    with open('/home/estel/Auto-Checkers/debug.txt', 'a') as f:
                         f.write(f'Game {numGames}: {isGameOver}, No. moves: {nummoves}\n')
                         f.write(f'Moves Done: {board.movesDone}\n\n')
 
@@ -97,6 +97,14 @@ def main():
                         print('Game Over, Winner: White')
                     else:
                         print('Game Over, Draw')
+
+                    with open('/home/estel/Auto-Checkers/results.txt', 'a') as f:
+                        f.write(f'Game {numGames+1}: {isGameOver}, No. moves: {nummoves}\n')
+                        f.write(f'Moves Done: {board.movesDone}\n\n')
+
+                    numGames += 1
+                    running = False
+                    
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                     if countBlack(board.board) > countWhite(board.board) or isGameOver == 'b':
                         print('Game Over, Winner: Black')
@@ -106,11 +114,13 @@ def main():
                         print('Game Over, Draw')
                     print('Restarting...')
                     
+                    with open('/home/estel/Auto-Checkers/results.txt', 'a') as f:
+                        f.write(f'Game {numGames+1}: {isGameOver}, No. moves: {nummoves}\n')
+                        f.write(f'Moves Done: {board.movesDone}\n\n')
+
                     numGames += 1
                     running = False
-                    break
-
-
+                    
         pygame.quit()
 
 if __name__ == '__main__':

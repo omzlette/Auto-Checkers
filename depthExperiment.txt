@@ -1,3 +1,6 @@
 Depth: 6, Last Depth: 5 Piece: (6, 7), Move: [5, 6]
 Depth: 5, Last Depth: 4 Piece: (6, 5), Move: [5, 4]
 Depth: 5, Last Depth: 4 Piece: (6, 3), Move: [5, 2]
+Depth: 6, Last Depth: 5 Piece: (6, 7), Move: [5, 6]
+Depth: 6, Last Depth: 5 Piece: (6, 5), Move: [5, 4]
+Depth: 5, Last Depth: 4 Piece: (6, 3), Move: [5, 2]

@@ -590,23 +590,23 @@ class AlphaBeta(Minimax):
                 f.write(f'-'*20)
             return self.evaluate_board(board), None, None
 
-        # transposition = self.probeTransposition(board)
-        # if transposition is not None and transposition['depth'] >= depth:
-        #     # Checking for saved depth higher or equal to current depth
-        #     # because higher depth means more accurate evaluation
-        #     if transposition['value'] > transposition['beta']:
-        #         # Lower Bound, fails high, Alpha is the lower bound
-        #         # Fail high means there exists a better move, meaning it's > beta
-        #         # Updating alpha to ensure that we won't prune moves that are better
-        #         alpha = max(alpha, transposition['value'])
-        #     elif transposition['value'] < transposition['alpha']:
-        #         # Upper Bound, fails low, Beta is the upper bound
-        #         # Fail low means there exists no moves that can make it > alpha
-        #         # Updating beta to ensure that we won't explore moves that are worse
-        #         beta = min(beta, transposition['value'])
-        #     else:
-        #         # Exact Value
-        #         return transposition['value'], None, None
+        transposition = self.probeTransposition(board)
+        if transposition is not None and transposition['depth'] >= depth:
+            # Checking for saved depth higher or equal to current depth
+            # because higher depth means more accurate evaluation
+            if transposition['value'] > transposition['beta']:
+                # Lower Bound, fails high, Alpha is the lower bound
+                # Fail high means there exists a better move, meaning it's > beta
+                # Updating alpha to ensure that we won't prune moves that are better
+                alpha = max(alpha, transposition['value'])
+            elif transposition['value'] < transposition['alpha']:
+                # Upper Bound, fails low, Beta is the upper bound
+                # Fail low means there exists no moves that can make it > alpha
+                # Updating beta to ensure that we won't explore moves that are worse
+                beta = min(beta, transposition['value'])
+            else:
+                # Exact Value
+                return transposition['value'], None, None
         
         if maximizing:
             maxEval = -np.inf
@@ -625,7 +625,7 @@ class AlphaBeta(Minimax):
                         bestPiece = piece
                         bestMove = initialMove
 
-            # self.storeTransposition(board, depth, maxEval, alpha, beta)
+            self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
         
         else:
@@ -645,7 +645,7 @@ class AlphaBeta(Minimax):
                         bestPiece = piece
                         bestMove = initialMove
 
-            # self.storeTransposition(board, depth, minEval, alpha, beta)
+            self.storeTransposition(board, depth, minEval, alpha, beta)
             return minEval, bestPiece, bestMove
             
     def squareMapping(self, square):

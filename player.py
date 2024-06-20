@@ -247,56 +247,44 @@ class Player():
         pieceRow = piece[0]
         pieceCol = piece[1]
         pieceColor = board[pieceRow][pieceCol].lower()
-        moveList = []
 
         if pieceColor == 'b':
             directions = blackDirections
-            endRow = 7  # Row where black pieces become kings
+            oppColor = 'w'
         else:
             directions = whiteDirections
-            endRow = 0  # Row where white pieces become kings
+            oppColor = 'b'
 
         def canMove(pieceRow, pieceCol, direction):
             checkRow, checkCol = pieceRow + direction[0], pieceCol + direction[1]
+            oppRowL, oppColL = checkRow + direction[0], checkCol + directions[0][1]
+            oppRowR, oppColR = checkRow + direction[0], checkCol + directions[1][1]
             if 0 <= checkRow <= 7 and 0 <= checkCol <= 7 and board[checkRow][checkCol] == '-':
-                return True, checkRow, checkCol
+                if 0 <= oppRowR <= 7 and 0 <= oppColR <= 7 and board[oppRowR][oppColR].lower() != oppColor:
+                    if 0 <= oppRowL <= 7 and 0 <= oppColL <= 7 and board[oppRowL][oppColL].lower() != oppColor:
+                        return True, checkRow, checkCol
             return False, -1, -1
 
         def canBridge(pieceRow, pieceCol, direction):
-            bridgeRow, bridgeCol = pieceRow + direction[0], pieceCol + direction[1]
-            landingRow, landingCol = bridgeRow + direction[0], bridgeCol + direction[1]
-            if (0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and
-                board[bridgeRow][bridgeCol].lower() == pieceColor and
-                0 <= landingRow <= 7 and 0 <= landingCol <= 7 and
-                board[landingRow][landingCol] == '-'):
-                return True, landingRow, landingCol
+            bridgeRow, bridgeCol = pieceRow, pieceCol + (2 * direction[1])
+            landingRow, landingCol = pieceRow + direction[0], pieceCol + direction[1]
+            oppRow, oppCol = landingRow + direction[0], pieceCol
+            if landingRow >= 0 and landingRow < 8 and landingCol >= 0 and landingCol < 8 and board[landingRow][landingCol] == '-':
+                if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol].lower() == pieceColor:
+                    if 0 <= oppRow <= 7 and 0 <= oppCol <= 7 and board[oppRow][oppCol].lower() == oppColor:
+                        return True, landingRow, landingCol
             return False, -1, -1
 
-        def findRunawayPath(pieceRow, pieceCol, currentPath):
-            if pieceRow == endRow:
-                return currentPath
+        for direction in directions:
+            canMoveFlag, _, _ = canMove(pieceRow, pieceCol, direction)
+            if canMoveFlag:
+                return True
+            else:
+                canBridgeFlag, _, _ = canBridge(pieceRow, pieceCol, direction)
+                if canBridgeFlag:
+                    return True
 
-            for direction in directions:
-                canMoveForward, newRow, newCol = canMove(pieceRow, pieceCol, direction)
-                if canMoveForward:
-                    tempBoard = copy.deepcopy(board)
-                    tempBoard[pieceRow][pieceCol], tempBoard[newRow][newCol] = '-', pieceColor
-                    result = findRunawayPath(newRow, newCol, currentPath + [(newRow, newCol)])
-                    if result:
-                        return result
-
-                canBridgeForward, bridgeRow, bridgeCol = canBridge(pieceRow, pieceCol, direction)
-                if canBridgeForward:
-                    tempBoard = copy.deepcopy(board)
-                    tempBoard[pieceRow][pieceCol], tempBoard[bridgeRow][bridgeCol], tempBoard[bridgeRow - direction[0]][bridgeRow - direction[1]] = '-', pieceColor, '-'
-                    result = findRunawayPath(bridgeRow, bridgeCol, currentPath + [(bridgeRow, bridgeCol)])
-                    if result:
-                        return result
-
-            return None
-
-        runawayPath = findRunawayPath(pieceRow, pieceCol, [(pieceRow, pieceCol)])
-        return runawayPath if runawayPath else []
+        return False
     
     def evaluate_board(self, board, verbose=False):
         vprint = print if verbose else lambda *a, **k: None
@@ -317,15 +305,18 @@ class Player():
             totalPieces += sum(list(map(lambda x: True if x.lower() in ['b', 'w'] else False, board[row])))
 
         # Multiplier for making the bot favor more pieces
-        # if totalPieces < 8:
-        #     MULTIPLIER = 5/6
-        # elif totalPieces >= 8 and totalPieces <= 10:
-        #     MULTIPLIER = 1
-        # elif totalPieces >= 11 and totalPieces <= 13:
-        #     MULTIPLIER = 7/6
-        # else:
-        #     MULTIPLIER = 4/3
-        MULTIPLIER = 1
+        if totalPieces < 8:
+            MULTIPLIER = 5/6
+        elif totalPieces >= 8 and totalPieces <= 10:
+            MULTIPLIER = 1
+        elif totalPieces >= 11 and totalPieces <= 13:
+            MULTIPLIER = 7/6
+        else:
+            MULTIPLIER = 4/3
+        # MULTIPLIER = 1
+
+        ourRunawayAdded = False
+        oppRunawayAdded = False
 
         ourTurn = self.botTurn
         oppTurn = self.oppTurn
@@ -362,36 +353,36 @@ class Player():
 
                 # Runaway Checkers
                 # If the bot has a path to become a king, it's better for the bot
-                # if board[row][col] == ourTurn:
-                #     if ourTurn == 'b' and row >= 4:
-                #         runaway = self.runawayCheckers(board, [row, col])
-                #         numMovestoKing = 7 - row
-                #         vprint(f'Our Runaway Checkers ({ourTurn}) [{row}, {col}]: {runaway}, {numMovestoKing}')
-                #         if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                #             ourVal += KINGPIECE - (numMovestoKing * 3)
-                #             vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
-                #     elif ourTurn == 'w' and row <= 3:
-                #         runaway = self.runawayCheckers(board, [row, col])
-                #         numMovestoKing = row
-                #         vprint(f'Our Runaway Checkers ({ourTurn}) [{row}, {col}]: {runaway}, {numMovestoKing}')
-                #         if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                #             ourVal += KINGPIECE - (numMovestoKing * 3)
-                #             vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
-                # elif board[row][col] == oppTurn:
-                #     if oppTurn == 'b' and row >= 4:
-                #         runaway = self.runawayCheckers(board, [row, col])
-                #         numMovestoKing = 7 - row
-                #         vprint(f'Opponent Runaway Checkers ({oppTurn}) [{row}, {col}]: {runaway}, {numMovestoKing}')
-                #         if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                #             oppVal += KINGPIECE - (numMovestoKing * 3)
-                #             vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
-                #     elif oppTurn == 'w' and row <= 3:
-                #         runaway = self.runawayCheckers(board, [row, col])
-                #         numMovestoKing = row
-                #         vprint(f'Opponent Runaway Checkers ({oppTurn}) [{row}, {col}]: {runaway}, {numMovestoKing}')
-                #         if len(runaway) == numMovestoKing and numMovestoKing > 0:
-                #             oppVal += KINGPIECE - (numMovestoKing * 3)
-                #             vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                if board[row][col] == ourTurn and not ourRunawayAdded:
+                    if ourTurn == 'b' and row >= 4:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = 7 - row
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
+                            ourRunawayAdded = True
+                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                    elif ourTurn == 'w' and row <= 3:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = row
+                            ourVal += KINGPIECE - (numMovestoKing * 3)
+                            ourRunawayAdded = True
+                            vprint(f'Our Runaway Checkers ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
+                elif board[row][col] == oppTurn and not oppRunawayAdded:
+                    if oppTurn == 'b' and row >= 4:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = 7 - row
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                            oppRunawayAdded = True
+                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
+                    elif oppTurn == 'w' and row <= 3:
+                        runawayFlag = self.runawayCheckers(board, [row, col])
+                        if runawayFlag:
+                            numMovestoKing = row
+                            oppVal += KINGPIECE - (numMovestoKing * 3)
+                            oppRunawayAdded = True
+                            vprint(f'Opponent Runaway Checkers ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).

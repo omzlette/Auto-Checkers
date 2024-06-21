@@ -50,8 +50,8 @@ class Player():
                     validMoves, capturePos = self.get_valid_moves(row, col, board)
                     if validMoves != []:
                         selectedPiece = [row, col]
-            #         else:
-            #             print("No valid moves")
+                    # else:
+                    #     print("No valid moves")
             #     else:
             #         print("Not your turn (Black turn)")
             # else:
@@ -249,7 +249,7 @@ class Player():
             landingRow, landingCol = pieceRow + direction[0], pieceCol + direction[1]
             oppRow, oppCol = landingRow + direction[0], pieceCol
             if landingRow >= 0 and landingRow < 8 and landingCol >= 0 and landingCol < 8 and board[landingRow][landingCol] == '-':
-                if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol].lower() == pieceColor:
+                if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol] != '-':
                     if 0 <= oppRow <= 7 and 0 <= oppCol <= 7 and board[oppRow][oppCol].lower() == oppColor:
                         return True, landingRow, landingCol
             return False, -1, -1
@@ -283,16 +283,16 @@ class Player():
         for row in range(rows):
             totalPieces += sum(list(map(lambda x: True if x.lower() in ['b', 'w'] else False, board[row])))
 
-        # Multiplier for making the bot favor more pieces
-        if totalPieces < 8:
-            MULTIPLIER = 5/6
-        elif totalPieces >= 8 and totalPieces <= 10:
-            MULTIPLIER = 1
-        elif totalPieces >= 11 and totalPieces <= 13:
-            MULTIPLIER = 7/6
-        else:
-            MULTIPLIER = 4/3
-        # MULTIPLIER = 1
+        # # Multiplier for making the bot favor more pieces
+        # if totalPieces < 8:
+        #     MULTIPLIER = 5/6
+        # elif totalPieces >= 8 and totalPieces <= 10:
+        #     MULTIPLIER = 1
+        # elif totalPieces >= 11 and totalPieces <= 13:
+        #     MULTIPLIER = 7/6
+        # else:
+        #     MULTIPLIER = 4/3
+        MULTIPLIER = 1
 
         ourRunawayAdded = False
         oppRunawayAdded = False
@@ -330,38 +330,38 @@ class Player():
                         oppVal -= TRAPPEDKING
                         vprint(f'Opponent Trapped King (-{TRAPPEDKING}): {oppVal}, Total Value: {ourVal - oppVal}')
 
-                # Runaway Checkers
-                # If the bot has a path to become a king, it's better for the bot
-                if board[row][col] == ourTurn and not ourRunawayAdded:
-                    if ourTurn == 'b' and row >= 4:
-                        runawayFlag = self.runawayCheckers(board, [row, col])
-                        if runawayFlag:
-                            numMovestoKing = 7 - row
-                            ourVal += KINGPIECE - (numMovestoKing * 3)
-                            ourRunawayAdded = True
-                            vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
-                    elif ourTurn == 'w' and row <= 3:
-                        runawayFlag = self.runawayCheckers(board, [row, col])
-                        if runawayFlag:
-                            numMovestoKing = row
-                            ourVal += KINGPIECE - (numMovestoKing * 3)
-                            ourRunawayAdded = True
-                            vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
-                elif board[row][col] == oppTurn and not oppRunawayAdded:
-                    if oppTurn == 'b' and row >= 4:
-                        runawayFlag = self.runawayCheckers(board, [row, col])
-                        if runawayFlag:
-                            numMovestoKing = 7 - row
-                            oppVal += KINGPIECE - (numMovestoKing * 3)
-                            oppRunawayAdded = True
-                            vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
-                    elif oppTurn == 'w' and row <= 3:
-                        runawayFlag = self.runawayCheckers(board, [row, col])
-                        if runawayFlag:
-                            numMovestoKing = row
-                            oppVal += KINGPIECE - (numMovestoKing * 3)
-                            oppRunawayAdded = True
-                            vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
+                # # Runaway Checkers
+                # # If the bot has a path to become a king, it's better for the bot
+                # if board[row][col] == ourTurn and not ourRunawayAdded:
+                #     if ourTurn == 'b' and row >= 4:
+                #         runawayFlag = self.runawayCheckers(board, [row, col])
+                #         if runawayFlag:
+                #             numMovestoKing = 7 - row
+                #             ourVal += KINGPIECE - (numMovestoKing * 3)
+                #             ourRunawayAdded = True
+                #             vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
+                #     elif ourTurn == 'w' and row <= 3:
+                #         runawayFlag = self.runawayCheckers(board, [row, col])
+                #         if runawayFlag:
+                #             numMovestoKing = row
+                #             ourVal += KINGPIECE - (numMovestoKing * 3)
+                #             ourRunawayAdded = True
+                #             vprint(f'Our Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {ourVal}, Total Value: {ourVal - oppVal}')
+                # elif board[row][col] == oppTurn and not oppRunawayAdded:
+                #     if oppTurn == 'b' and row >= 4:
+                #         runawayFlag = self.runawayCheckers(board, [row, col])
+                #         if runawayFlag:
+                #             numMovestoKing = 7 - row
+                #             oppVal += KINGPIECE - (numMovestoKing * 3)
+                #             oppRunawayAdded = True
+                #             vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
+                #     elif oppTurn == 'w' and row <= 3:
+                #         runawayFlag = self.runawayCheckers(board, [row, col])
+                #         if runawayFlag:
+                #             numMovestoKing = row
+                #             oppVal += KINGPIECE - (numMovestoKing * 3)
+                #             oppRunawayAdded = True
+                #             vprint(f'Opponent Runaway Checkers ({KINGPIECE - (numMovestoKing * 3)}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Dog-Hole (putting ourselves in a dog hole is no good)
         # For black, h2 (28) with white on g1 (32). For white, a7 (5) with black on b8 (1).
@@ -450,10 +450,17 @@ class Minimax(Player):
 
     def perform_all_move(self, piece, initialMove, turn, board):
         new_board = self.simulate_game(piece, initialMove, turn, board)
+        oppTurn = 'w' if turn == 'b' else 'b'
+        checkNextCapture = False
         finalMove = initialMove
         move_sequence = [initialMove]
 
-        while True:
+        if abs(finalMove[0] - piece[0]) >= 2 and abs(finalMove[1] - piece[1]) >= 2:
+            captureLoc = ((finalMove[0] + piece[0]) // 2, (finalMove[1] + piece[1]) // 2)
+            if board[captureLoc[0]][captureLoc[1]].lower() == oppTurn:
+                checkNextCapture = True
+
+        while checkNextCapture:
             captureMoves, _ = self.can_capture(finalMove[0], finalMove[1], new_board)
             if captureMoves != []:
                 for captureMove in captureMoves:
@@ -466,31 +473,22 @@ class Minimax(Player):
         return new_board, initialMove, move_sequence
 
     def iterativeDeepening(self, board):
-        bestPiece = None
-        bestMove = None
-        bestValue = -np.inf
-        bestDepth = None
+        lastPiece = None
+        lastMove = None
+        lastVal = -np.inf
+        lastDepth = None
         depth = 1
         self.timer = time.time()
         while True:
             if time.time() - self.timer > self.timeLimit: break
             value, piece, move = self.minimax(board, depth, True)
-            # print('Depth:', depth, 'Time:', time.time() - self.timer, f'Value: {value} Piece: {piece} Move: {move}')
-            if value > bestValue:
-                bestDepth = depth
-                bestValue = value
-                bestPiece = piece
-                bestMove = move
-            if value >= 2000:
-                # If the bot wins, return the move
-                bestDepth = depth
-                bestValue = value
-                bestPiece = piece
-                bestMove = move
-                break
+            lastDepth = depth
+            lastVal = value
+            lastPiece = piece
+            lastMove = move
             depth += 1
-        # print(f'Time taken: {time.time() - self.timer} seconds, Depth: {depth}, Value: {bestValue}, Piece: {bestPiece}, Move: {bestMove}')
-        return bestValue, bestPiece, bestMove
+        debugToFile(f'Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}', 'depthExperiment.txt')
+        return lastVal, lastPiece, lastMove
 
     def play(self, board):
         # self.prevCount = countBlack(board) + countWhite(board)
@@ -502,6 +500,9 @@ class Minimax(Player):
         return bestPiece, bestMove
         
     def minimax(self, board, depth, maximizing):
+        debugToFile(f"Entering depth {depth} for board state:", 'debug-minimax.txt')
+        for row in board:
+            debugToFile(' '.join(row), 'debug-minimax.txt')
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
             return self.evaluate_board(board), None, None
 
@@ -512,10 +513,14 @@ class Minimax(Player):
             movesdict = self.get_all_moves(self.botTurn, board)
             for piece, movetolist in movesdict.items():
                 for initialMove in movetolist:
+                    debugToFile('-'*20, 'debug-minimax.txt')
+                    debugToFile(f'Max Evaluation for {piece} -> {initialMove} @ Depth {depth}', 'debug-minimax.txt')
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.botTurn, board)
                     eval, _, _ = self.minimax(new_board, depth-1, False)
-                    maxEval = max(maxEval, eval)
-                    if maxEval == eval:
+                    debugToFile(f'Evaluated child node @ Depth {depth} with value: {eval}', 'debug-minimax.txt')
+                    if eval > maxEval:
+                        debugToFile(f'Updating bestPiece: {piece}, bestMove: {initialMove}', 'debug-minimax.txt')
+                        maxEval = max(maxEval, eval)
                         bestPiece = piece
                         bestMove = initialMove
 
@@ -528,10 +533,13 @@ class Minimax(Player):
             movesdict = self.get_all_moves(self.oppTurn, board)
             for piece, movetolist in movesdict.items():
                 for initialMove in movetolist:
+                    debugToFile(f'Min Evaluation for {piece} -> {initialMove} @ Depth {depth}', 'debug-minimax.txt')
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.oppTurn, board)
                     eval, _, _ = self.minimax(new_board, depth-1, True)
-                    minEval = min(minEval, eval)
-                    if minEval == eval:
+                    debugToFile(f'Evaluated child node @ Depth {depth} with value: {eval}', 'debug-minimax.txt')
+                    if eval < minEval:
+                        debugToFile(f'Updating bestPiece: {piece}, bestMove: {initialMove}', 'debug-minimax.txt')
+                        minEval = min(minEval, eval)
                         bestPiece = piece
                         bestMove = initialMove
 
@@ -568,8 +576,8 @@ class AlphaBeta(Minimax):
             lastPiece = piece
             lastMove = move
             depth += 1
-        with open('/home/estel/Auto-Checkers/depthExperiment.txt', 'a') as f:
-            f.write(f'Depth: {depth}, Last Depth: {lastDepth} Piece: {lastPiece}, Move: {lastMove}\n')
+        with open('depthExperiment.txt', 'a') as f:
+            f.write(f'Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}\n')
         return lastVal, lastPiece, lastMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):
@@ -578,16 +586,17 @@ class AlphaBeta(Minimax):
         bestMove = None
         movesdict = self.get_all_moves(self.botTurn, board)
 
+        with open('debug-alphabeta.txt', 'a') as f:
+            f.write(f'-'*20)
+            f.write(f'\nBot Turn: {self.botTurn}\n')
+            f.write(f'Depth: {depth}\n')
+            f.write(f'Board:\n')
+            for row in board:
+                f.write(' '.join(row) + '\n')
+            f.write(f'Evaluation: {self.evaluate_board(board)}\n')
+            f.write(f'-'*20)
+
         if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
-            with open('/home/estel/Auto-Checkers/debug-alphabeta.txt', 'a') as f:
-                f.write(f'-'*20)
-                f.write(f'\nBot Turn: {self.botTurn}\n')
-                f.write(f'Moves: ')
-                f.write(f'Board:\n')
-                for row in board:
-                    f.write(' '.join(row) + '\n')
-                f.write(f'Evaluation: {self.evaluate_board(board)}\n')
-                f.write(f'-'*20)
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -617,13 +626,13 @@ class AlphaBeta(Minimax):
                 for initialMove in movetolist:
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.botTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, False)
-                    maxEval = max(maxEval, eval)
                     alpha = max(alpha, maxEval)
-                    if beta <= alpha:
-                        break
-                    if maxEval == eval:
+                    if eval > maxEval:
+                        maxEval = max(maxEval, eval)
                         bestPiece = piece
                         bestMove = initialMove
+                    if beta <= alpha:
+                        break
 
             self.storeTransposition(board, depth, maxEval, alpha, beta)
             return maxEval, bestPiece, bestMove
@@ -637,13 +646,13 @@ class AlphaBeta(Minimax):
                 for initialMove in movetolist:
                     new_board, _, _ = self.perform_all_move(piece, initialMove, self.oppTurn, board)
                     eval, _, _ = self.alphaBeta(new_board, depth-1, alpha, beta, True)
-                    minEval = min(minEval, eval)
                     beta = min(beta, minEval)
-                    if beta <= alpha:
-                        break
-                    if minEval == eval:
+                    if eval < minEval:
+                        minEval = min(minEval, eval)
                         bestPiece = piece
                         bestMove = initialMove
+                    if beta <= alpha:
+                        break
 
             self.storeTransposition(board, depth, minEval, alpha, beta)
             return minEval, bestPiece, bestMove
@@ -866,3 +875,7 @@ def check_basic_capture(row, col, board):
                 else:
                     break
     return False
+
+def debugToFile(msg, file):
+    with open(file, 'a') as f:
+        f.write(msg + '\n')

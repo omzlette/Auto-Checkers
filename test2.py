@@ -43,7 +43,7 @@ testBoard = [['-', '-', '-', '-', '-', '-', '-', '-'],
              ['-', '-', '-', '-', '-', '-', '-', '-'],
              ['-', '-', '-', '-', '-', '-', '-', '-'],
              ['-', '-', '-', '-', '-', '-', '-', '-'],
-             ['-', '-', 'b', '-', 'b', '-', '-', '-'],
+             ['-', '-', 'b', '-', 'w', '-', '-', '-'],
              ['-', '-', '-', '-', '-', 'b', '-', '-'],
              ['w', '-', 'w', '-', '-', '-', 'w', '-']]
 
@@ -86,7 +86,7 @@ def runawayCheckers(board, piece):
         oppRow, oppCol = landingRow + direction[0], pieceCol
         print(bridgeRow, bridgeCol, landingRow, landingCol, oppRow, oppCol)
         if landingRow >= 0 and landingRow < 8 and landingCol >= 0 and landingCol < 8 and board[landingRow][landingCol] == '-':
-            if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol].lower() == pieceColor:
+            if 0 <= bridgeRow <= 7 and 0 <= bridgeCol <= 7 and board[bridgeRow][bridgeCol] != '-':
                 if 0 <= oppRow <= 7 and 0 <= oppCol <= 7 and board[oppRow][oppCol].lower() == oppColor:
                     return True, landingRow, landingCol
         return False, -1, -1
@@ -104,4 +104,4 @@ def runawayCheckers(board, piece):
 
     return False
 
-print(runawayCheckers(testBoard, (5, 4)))
+print(runawayCheckers(testBoard, (5, 2)))

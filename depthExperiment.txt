@@ -142,3 +142,87 @@ Depth: 8, Last Depth: 7, Val: 273, Piece: (3, 4), Move: [1, 6]
 Depth: 8, Last Depth: 7, Val: 273, Piece: (3, 4), Move: [1, 6]
 Depth: 9, Last Depth: 8, Val: 273, Piece: (3, 2), Move: [1, 0]
 Depth: 8, Last Depth: 7, Val: 273, Piece: (3, 4), Move: [1, 6]
+Depth: 7, Last Depth: 6, Val: 273, Piece: (3, 4), Move: [1, 6]
+Depth: 8, Last Depth: 7, Val: 273, Piece: (3, 2), Move: [1, 0]
+Depth: 7, Last Depth: 6, Val: 273, Piece: (3, 4), Move: [1, 6]
+Depth: 8, Last Depth: 7, Val: 123, Piece: (7, 0), Move: [5, 2]
+Depth: 8, Last Depth: 7, Val: 123, Piece: (5, 2), Move: [4, 1]
+Depth: 8, Last Depth: 7, Val: 123, Piece: (4, 1), Move: [3, 0]
+Depth: 8, Last Depth: 7, Val: 123, Piece: (7, 2), Move: [6, 1]
+Depth: 8, Last Depth: 7, Val: 173, Piece: (3, 0), Move: [2, 1]
+Depth: 8, Last Depth: 7, Val: 263, Piece: (2, 1), Move: [1, 0]
+Depth: 4808, Last Depth: 4807, Val: 113, Piece: None, Move: None
+Depth: 6276, Last Depth: 6275, Val: 113, Piece: None, Move: None
+Depth: 6460, Last Depth: 6459, Val: 113, Piece: None, Move: None
+Depth: 8, Last Depth: 7, Val: 373, Piece: (1, 0), Move: [0, 1]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (6, 1), Move: [5, 0]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (5, 0), Move: [4, 1]
+Depth: 5, Last Depth: 4, Val: 3, Piece: (4, 1), Move: [3, 0]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (6, 3), Move: [5, 2]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (5, 2), Move: [4, 1]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (6, 5), Move: [5, 4]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (5, 4), Move: [4, 3]
+Depth: 6, Last Depth: 5, Val: 133, Piece: (4, 3), Move: [3, 4]
+Depth: 6, Last Depth: 5, Val: 133, Piece: (6, 7), Move: [5, 6]
+Depth: 7, Last Depth: 6, Val: 133, Piece: (7, 6), Move: [5, 4]
+Depth: 7, Last Depth: 6, Val: 133, Piece: (7, 0), Move: [6, 1]
+Depth: 6, Last Depth: 5, Val: 133, Piece: (6, 1), Move: [5, 0]
+Depth: 7, Last Depth: 6, Val: 113, Piece: (7, 2), Move: [6, 1]
+Depth: 8, Last Depth: 7, Val: 113, Piece: (4, 1), Move: [3, 2]
+Depth: 8, Last Depth: 7, Val: 113, Piece: (3, 2), Move: [2, 1]
+Depth: 8, Last Depth: 7, Val: 113, Piece: (2, 1), Move: [1, 2]
+Depth: 7, Last Depth: 6, Val: 263, Piece: (1, 2), Move: [0, 3]
+Depth: 6, Last Depth: 5, Val: 263, Piece: (0, 3), Move: [1, 4]
+Depth: 6, Last Depth: 5, Val: 183, Piece: (1, 4), Move: [2, 3]
+Depth: 6, Last Depth: 5, Val: 173, Piece: (2, 3), Move: [3, 2]
+Depth: 6, Last Depth: 5, Val: 173, Piece: (3, 2), Move: [7, 6]
+Depth: 7, Last Depth: 6, Val: 213, Piece: (1, 0), Move: [0, 1]
+Depth: 7, Last Depth: 6, Val: 313, Piece: (0, 1), Move: [1, 0]
+Depth: 7, Last Depth: 6, Val: 313, Piece: (1, 0), Move: [0, 1]
+Depth: 8, Last Depth: 7, Val: 423, Piece: (7, 4), Move: [5, 6]
+Depth: 9, Last Depth: 8, Val: inf, Piece: (0, 1), Move: [4, 5]
+Depth: 8, Last Depth: 7, Val: inf, Piece: (3, 0), Move: [2, 1]
+Depth: 8, Last Depth: 7, Val: 413, Piece: (2, 1), Move: [1, 2]
+Depth: 6, Last Depth: 5, Val: 313, Piece: (4, 5), Move: [3, 4]
+Depth: 8, Last Depth: 7, Val: inf, Piece: (1, 2), Move: [0, 1]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (6, 1), Move: [5, 0]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (5, 0), Move: [4, 1]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (4, 1), Move: [3, 0]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (6, 3), Move: [5, 2]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (5, 2), Move: [4, 1]
+Depth: 7, Last Depth: 6, Val: 23, Piece: (6, 5), Move: [5, 4]
+Depth: 6, Last Depth: 5, Val: 23, Piece: (6, 7), Move: [5, 6]
+Depth: 7, Last Depth: 6, Val: 23, Piece: (5, 4), Move: [4, 5]
+Depth: 8, Last Depth: 7, Val: 23, Piece: (4, 5), Move: [2, 3]
+Depth: 8, Last Depth: 7, Val: 23, Piece: (3, 0), Move: [1, 2]
+Depth: 8, Last Depth: 7, Val: 23, Piece: (7, 4), Move: [5, 6]
+Depth: 7, Last Depth: 6, Val: 23, Piece: (4, 1), Move: [3, 0]
+Depth: 7, Last Depth: 6, Val: 23, Piece: (5, 6), Move: [4, 7]
+Depth: 7, Last Depth: 6, Val: 23, Piece: (4, 7), Move: [3, 6]
+Depth: 6, Last Depth: 5, Val: 63, Piece: (3, 0), Move: [2, 1]
+Depth: 6, Last Depth: 5, Val: 73, Piece: (2, 1), Move: [1, 2]
+Depth: 6, Last Depth: 5, Val: 163, Piece: (1, 2), Move: [0, 3]
+Depth: 6, Last Depth: 5, Val: 173, Piece: (0, 3), Move: [1, 2]
+Depth: 4527, Last Depth: 4526, Val: 73, Piece: None, Move: None
+Depth: 6210, Last Depth: 6209, Val: 73, Piece: None, Move: None
+Depth: 5868, Last Depth: 5867, Val: 73, Piece: None, Move: None
+Depth: 5976, Last Depth: 5975, Val: 73, Piece: None, Move: None
+Depth: 6341, Last Depth: 6340, Val: 73, Piece: None, Move: None
+Depth: 6088, Last Depth: 6087, Val: 73, Piece: None, Move: None
+Depth: 4867, Last Depth: 4866, Val: 73, Piece: None, Move: None
+Depth: 1178, Last Depth: 1177, Val: 73, Piece: None, Move: None
+Depth: 956, Last Depth: 955, Val: 73, Piece: None, Move: None
+Depth: 4746, Last Depth: 4745, Val: 73, Piece: None, Move: None
+Depth: 2626, Last Depth: 2625, Val: 73, Piece: None, Move: None
+Depth: 2626, Last Depth: 2625, Val: -inf, Piece: None, Move: None
+Depth: 2, Last Depth: 1, Val: 73, Piece: (1, 2), Move: [0, 1]
+Depth: 3898, Last Depth: 3897, Val: 73, Piece: None, Move: None
+Depth: 5981, Last Depth: 5980, Val: 73, Piece: None, Move: None
+Depth: 5679, Last Depth: 5678, Val: -inf, Piece: None, Move: None
+Depth: 5952, Last Depth: 5951, Val: 73, Piece: None, Move: None
+Depth: 5811, Last Depth: 5810, Val: 73, Piece: None, Move: None
+Depth: 5902, Last Depth: 5901, Val: 73, Piece: None, Move: None
+Depth: 2358, Last Depth: 2357, Val: 73, Piece: None, Move: None
+-
+Depth: 2073, Last Depth: 2072, Val: 73, Piece: None, Move: None
+Depth: 1759, Last Depth: 1758, Val: 73, Piece: None, Move: None

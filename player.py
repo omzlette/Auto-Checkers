@@ -66,21 +66,17 @@ class Player():
             board[rowMove][colMove] = board[self.selectedPiece[0]][self.selectedPiece[1]]
             board[self.selectedPiece[0]][self.selectedPiece[1]] = '-'
             if self.capturePos != []:
-                # print("Capture @", self.capturePos, "selected piece:", self.selectedPiece, "move to:", [rowMove, colMove])
                 idxtoRemove = self.validMoves.index([rowMove, colMove])
                 board[self.capturePos[idxtoRemove][0]][self.capturePos[idxtoRemove][1]] = '-'
                 self.prevMove = [rowMove, colMove]
-                # print("Capture @", self.capturePos, "selected piece:", self.selectedPiece, "move to:", [rowMove, colMove])
                 self.capturePos = []
                 self.mandatory_moves = self.get_mandatory_capture(turn, board, self.prevMove)
-                # print("Mandatory moves:", self.mandatory_moves)
             board = self.make_king(rowMove, colMove, board)
             self.selectedPiece = []
             self.validMoves = []
             if not self.mandatory_moves:
                 self.init_variables()
                 turn = 'w' if turn == 'b' else 'b'
-                # print(f'Selected Piece: {self.selectedPiece}, Valid Moves: {self.validMoves}, Capture Pos: {self.capturePos}')
         else:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(rowMove, colMove, turn, board)
         return board, turn
@@ -198,8 +194,10 @@ class Player():
         moves = {}
         if self.mandatory_moves:
             for piece in self.mandatory_moves:
-                moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
-        elif pieceLoc is None:
+                if board[piece[0]][piece[1]].lower() == player:
+                    moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
+        
+        if pieceLoc is None and not self.mandatory_moves:
             mandatory_moves = self.get_mandatory_capture(player, board)
             if mandatory_moves:
                 for piece in mandatory_moves:
@@ -209,7 +207,7 @@ class Player():
                     for col in range(cols):
                         if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] != []:
                             moves[(row, col)] = self.get_valid_moves(row, col, board)[0]
-        else:
+        elif pieceLoc is not None:
             # Check only passed piece location
             moves[tuple(pieceLoc)] = self.get_valid_moves(pieceLoc[0], pieceLoc[1], board)[0]
 
@@ -325,7 +323,10 @@ class Player():
                     ourVal += KINGPIECE
                     vprint(f'Our King Piece ({KINGPIECE}): {ourVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(ourTurn, board, [row, col])
-                    vprint('Our King Moves:', kingMoves)
+                    vprint(f'Our King Moves {row, col}:', kingMoves)
+                    # for rowb in board:
+                    #     debugToFile(f'{rowb}\n', 'debug-eval.txt')
+                    # debugToFile(f'Our -- {ourTurn} -- King Moves {row, col}: {kingMoves}\n', 'debug-eval.txt')
                     if len(kingMoves[(row, col)]) == 0:
                         ourVal -= TRAPPEDKING
                         vprint(f'Our Trapped King (-{TRAPPEDKING}): {ourVal}, Total Value: {ourVal - oppVal}')
@@ -334,7 +335,7 @@ class Player():
                     vprint(f'Opponent King Piece ({KINGPIECE}): {oppVal}, Total Value: {ourVal - oppVal}')
                     kingMoves = self.get_all_moves(oppTurn, board, [row, col])
                     vprint('Opponent King Moves:', kingMoves)
-                    if len(kingMoves[(row, col)]) == 0:
+                    if kingMoves == {}:
                         oppVal -= TRAPPEDKING
                         vprint(f'Opponent Trapped King (-{TRAPPEDKING}): {oppVal}, Total Value: {ourVal - oppVal}')
 
@@ -499,13 +500,20 @@ class Minimax(Player):
         return lastVal, lastPiece, lastMove
 
     def play(self, board):
-        # self.prevCount = countBlack(board) + countWhite(board)
-        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
-        if len(mandatory_moves) == 1:
-            bestPiece, bestMove = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+        if not self.mandatory_moves:
+            mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+            if len(mandatory_moves) == 1:
+                piece, move = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+            else:
+                _, piece, move = self.iterativeDeepening(board)
         else:
-            _, bestPiece, bestMove = self.iterativeDeepening(board)
-        return bestPiece, bestMove
+            if board[self.mandatory_moves[0][0]][self.mandatory_moves[0][1]].lower() == self.botTurn:
+                piece = self.mandatory_moves[0]
+                if len(self.get_valid_moves(piece[0], piece[1], board)[0]) == 1:
+                    move = self.get_valid_moves(piece[0], piece[1], board)[0][0]
+            else:
+                _, piece, move = self.iterativeDeepening(board)
+        return piece, move
         
     def minimax(self, board, depth, maximizing):
         debugToFile(f"Entering depth {depth} for board state:", 'debug-minimax.txt')
@@ -561,12 +569,19 @@ class AlphaBeta(Minimax):
         self.hashtable = {}
 
     def play(self, board):
-        # self.prevCount = countBlack(board) + countWhite(board)
-        mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
-        if len(mandatory_moves) == 1:
-            piece, move = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+        if not self.mandatory_moves:
+            mandatory_moves = self.get_mandatory_capture(self.botTurn, board)
+            if len(mandatory_moves) == 1:
+                piece, move = mandatory_moves[0], self.get_valid_moves(mandatory_moves[0][0], mandatory_moves[0][1], board)[0][0]
+            else:
+                _, piece, move = self.iterativeDeepening(board)
         else:
-            _, piece, move = self.iterativeDeepening(board)
+            if board[self.mandatory_moves[0][0]][self.mandatory_moves[0][1]].lower() == self.botTurn:
+                piece = self.mandatory_moves[0]
+                if len(self.get_valid_moves(piece[0], piece[1], board)[0]) == 1:
+                    move = self.get_valid_moves(piece[0], piece[1], board)[0][0]
+            else:
+                _, piece, move = self.iterativeDeepening(board)
         return piece, move
 
     def iterativeDeepening(self, board):
@@ -589,7 +604,6 @@ class AlphaBeta(Minimax):
         return lastVal, lastPiece, lastMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):
-        maxEval = -np.inf
         bestPiece = None
         bestMove = None
         movesdict = self.get_all_moves(self.botTurn, board)
@@ -601,7 +615,7 @@ class AlphaBeta(Minimax):
             f.write(f'Board:\n')
             for row in board:
                 f.write(' '.join(row) + '\n')
-            f.write(f'Evaluation: {self.evaluate_board(board)}\n')
+            f.write(f'Evaluation: {self.evaluate_board(board)}, Alpha: {alpha}, Beta: {beta}\n')
             f.write(f'-'*20)
 
         if depth == 0 or is_game_over(board, self.turn, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:

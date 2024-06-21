@@ -27,8 +27,11 @@ def main():
     # player1, player2, board = initGame(numGames)
     board = Checkers()
     player1 = User('b', board.board, board.movesDone)
-    player2 = AlphaBeta('w', board.board, board.movesDone)
-    # player2 = Minimax('w', board.board, board.movesDone)
+    # player2 = AlphaBeta('w', board.board, board.movesDone)
+
+    # player1 = User('b', board.board, board.movesDone)
+    # player2 = User('w', board.board, board.movesDone)
+    player2 = Minimax('w', board.board, board.movesDone)
     isGameOver = False
     running = True
 

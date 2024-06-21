@@ -34,7 +34,7 @@ def main():
     running = True
 
     while running:
-        isGameOver = is_game_over(board.board, board.movesDone)
+        isGameOver = is_game_over(board.board, board.turn, board.movesDone)
 
         board.screen.fill(BROWN)
         board.draw_board()

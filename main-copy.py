@@ -36,7 +36,7 @@ def main():
         with open('/home/estel/Auto-Checkers/debug.txt', 'w') as f:
             f.write('')
         while running:
-            isGameOver = is_game_over(board.board, board.movesDone)
+            isGameOver = is_game_over(board.board, board.turn, board.movesDone)
 
             if not isGameOver:
                 if board.turn == 'b':

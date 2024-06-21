@@ -405,13 +405,13 @@ class Player():
             vprint(f'Opponent Back Rank ({BACKRANK}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Win/Lose/Draw
-        if is_game_over(board, self.movesDone) == ourTurn:
+        if is_game_over(board, self.turn, self.movesDone) == ourTurn:
             ourVal += GAMEOVER
             vprint(f'Game Over ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
-        elif is_game_over(board, self.movesDone) == oppTurn:
+        elif is_game_over(board, self.turn, self.movesDone) == oppTurn:
             oppVal += GAMEOVER
             vprint(f'Game Over ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
-        elif is_game_over(board, self.movesDone) == 'draw':
+        elif is_game_over(board, self.turn, self.movesDone) == 'draw':
             ourVal += DRAW
             oppVal += DRAW
             vprint(f'Draw: {ourVal}, Total Value: {ourVal - oppVal}')
@@ -503,7 +503,7 @@ class Minimax(Player):
         debugToFile(f"Entering depth {depth} for board state:", 'debug-minimax.txt')
         for row in board:
             debugToFile(' '.join(row), 'debug-minimax.txt')
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
+        if depth == 0 or is_game_over(board, self.turn, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
             return self.evaluate_board(board), None, None
 
         if maximizing:
@@ -596,7 +596,7 @@ class AlphaBeta(Minimax):
             f.write(f'Evaluation: {self.evaluate_board(board)}\n')
             f.write(f'-'*20)
 
-        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
+        if depth == 0 or is_game_over(board, self.turn, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -771,7 +771,7 @@ def countKings(board):
                 whiteKings += 1
     return whiteKings, blackKings
 
-def is_game_over(board, movesDone):
+def is_game_over(board, turn, movesDone):
     tempb = []
     tempbmove = []
     tempbcap = []
@@ -795,9 +795,6 @@ def is_game_over(board, movesDone):
         tempbcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
     for normMove, capMove in zip(tempbmove, tempbcap):
         tempb.append(normMove or capMove)
-    if all(not i for i in tempb) or countBlack(board) == 0:
-        # print('White wins', tempb, tempbmove, tempbcap)
-        return 'w'
 
     xw = np.char.lower(np.array(board)) == 'w'
     pieceloclist = np.asarray(np.where(xw)).T.tolist()
@@ -806,9 +803,14 @@ def is_game_over(board, movesDone):
         tempwcap.append(check_basic_capture(pieceloc[0], pieceloc[1], board))
     for normMove, capMove in zip(tempwmove, tempwcap):
         tempw.append(normMove or capMove)
-    if all(not i for i in tempw) or countWhite(board) == 0:
-        # print('Black wins', tempw)
-        return 'b'
+
+    if turn == 'b':
+        if all(not i for i in tempb) or countBlack(board) == 0:
+            return 'w'
+
+    elif turn == 'w':
+        if all(not i for i in tempw) or countWhite(board) == 0:
+            return 'b'
 
     if (blackCount == 1 and blackKing == 1) and\
        (whiteCount == 1 and whiteKing == 1) and\

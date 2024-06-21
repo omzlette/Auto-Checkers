@@ -22,13 +22,14 @@ class Player():
         self.selectedPiece = []
         self.mandatory_moves = []
         self.prevCapture = []
+        self.prevMove = []
         self.validMoves = []
         self.capturePos = []
 
     def select_piece(self, row, col, turn, board):
         # check if piece is valid and not conflicting with mandatory capture
         selectedPiece, validMoves, capturePos = [], [], []
-        self.mandatory_moves = self.get_mandatory_capture(turn, board)
+        self.mandatory_moves = self.get_mandatory_capture(turn, board, self.prevMove)
         if self.mandatory_moves:
             if [row, col] in self.mandatory_moves:
                 selectedPiece = [row, col]
@@ -65,16 +66,21 @@ class Player():
             board[rowMove][colMove] = board[self.selectedPiece[0]][self.selectedPiece[1]]
             board[self.selectedPiece[0]][self.selectedPiece[1]] = '-'
             if self.capturePos != []:
+                # print("Capture @", self.capturePos, "selected piece:", self.selectedPiece, "move to:", [rowMove, colMove])
                 idxtoRemove = self.validMoves.index([rowMove, colMove])
                 board[self.capturePos[idxtoRemove][0]][self.capturePos[idxtoRemove][1]] = '-'
+                self.prevMove = [rowMove, colMove]
+                # print("Capture @", self.capturePos, "selected piece:", self.selectedPiece, "move to:", [rowMove, colMove])
                 self.capturePos = []
                 self.mandatory_moves = self.get_mandatory_capture(turn, board, self.prevMove)
+                # print("Mandatory moves:", self.mandatory_moves)
             board = self.make_king(rowMove, colMove, board)
             self.selectedPiece = []
             self.validMoves = []
             if not self.mandatory_moves:
                 self.init_variables()
                 turn = 'w' if turn == 'b' else 'b'
+                # print(f'Selected Piece: {self.selectedPiece}, Valid Moves: {self.validMoves}, Capture Pos: {self.capturePos}')
         else:
             self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(rowMove, colMove, turn, board)
         return board, turn
@@ -155,13 +161,13 @@ class Player():
 
         return moves, capturePos
 
-    def get_mandatory_capture(self, turn, board, prevMove=None):
+    def get_mandatory_capture(self, turn, board, prevMove=[]):
         mandatory_moves = []
         for row in range(rows):
             for col in range(cols):
                 if board[row][col].lower() == 'b' and turn == 'b':
                     if self.can_capture(row, col, board)[1]:
-                        if prevMove is not None:
+                        if prevMove != []:
                             if [row, col] == prevMove:
                                 mandatory_moves.append([row, col])
                         else:
@@ -171,7 +177,7 @@ class Player():
                             break
                 elif board[row][col].lower() == 'w' and turn == 'w':
                     if self.can_capture(row, col, board)[1]:
-                        if prevMove is not None:
+                        if prevMove != []:
                             if [row, col] == prevMove:
                                 mandatory_moves.append([row, col])
                         else:
@@ -190,7 +196,10 @@ class Player():
     
     def get_all_moves(self, player, board, pieceLoc=None):
         moves = {}
-        if pieceLoc is None:
+        if self.mandatory_moves:
+            for piece in self.mandatory_moves:
+                moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
+        elif pieceLoc is None:
             mandatory_moves = self.get_mandatory_capture(player, board)
             if mandatory_moves:
                 for piece in mandatory_moves:
@@ -215,7 +224,6 @@ class Player():
         new_board = copy.deepcopy(board)
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], turn, new_board)
         new_board, _ = self.move_piece(move, turn, new_board)
-        self.init_variables()
         return new_board
 
     def runawayCheckers(self, board, piece):

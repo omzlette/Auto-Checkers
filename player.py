@@ -192,12 +192,15 @@ class Player():
     
     def get_all_moves(self, player, board, pieceLoc=None):
         moves = {}
-        if self.mandatory_moves:
+        if self.mandatory_moves and pieceLoc is None:
             for piece in self.mandatory_moves:
                 if board[piece[0]][piece[1]].lower() == player:
                     moves[tuple(piece)] = self.get_valid_moves(piece[0], piece[1], board)[0]
         
-        if pieceLoc is None and not self.mandatory_moves:
+        if pieceLoc is not None:
+            # Check only passed piece location
+            moves[tuple(pieceLoc)] = self.get_valid_moves(pieceLoc[0], pieceLoc[1], board)[0]
+        else:
             mandatory_moves = self.get_mandatory_capture(player, board)
             if mandatory_moves:
                 for piece in mandatory_moves:
@@ -207,9 +210,6 @@ class Player():
                     for col in range(cols):
                         if board[row][col].lower() == player and self.get_valid_moves(row, col, board)[0] != []:
                             moves[(row, col)] = self.get_valid_moves(row, col, board)[0]
-        elif pieceLoc is not None:
-            # Check only passed piece location
-            moves[tuple(pieceLoc)] = self.get_valid_moves(pieceLoc[0], pieceLoc[1], board)[0]
 
         return moves
     
@@ -414,13 +414,13 @@ class Player():
             vprint(f'Opponent Back Rank ({BACKRANK}): {oppVal}, Total Value: {ourVal - oppVal}')
 
         # Win/Lose/Draw
-        if is_game_over(board, self.turn, self.movesDone) == ourTurn:
+        if is_game_over(board, self.movesDone) == ourTurn:
             ourVal += GAMEOVER
             vprint(f'Game Over ({ourTurn}): {ourVal}, Total Value: {ourVal - oppVal}')
-        elif is_game_over(board, self.turn, self.movesDone) == oppTurn:
+        elif is_game_over(board, self.movesDone) == oppTurn:
             oppVal += GAMEOVER
             vprint(f'Game Over ({oppTurn}): {oppVal}, Total Value: {ourVal - oppVal}')
-        elif is_game_over(board, self.turn, self.movesDone) == 'draw':
+        elif is_game_over(board, self.movesDone) == 'draw':
             ourVal += DRAW
             oppVal += DRAW
             vprint(f'Draw: {ourVal}, Total Value: {ourVal - oppVal}')
@@ -431,6 +431,8 @@ class User(Player):
     def __init__(self, turn, board, movesDone):
         super().__init__(turn, board, movesDone)
         self.user = True
+        self.ourTurn = 'b' if turn == 'b' else 'w'
+        self.oppTurn = 'w' if turn == 'b' else 'b'
 
     def get_mouse_pos(self):
         x, y = pygame.mouse.get_pos()
@@ -495,6 +497,8 @@ class Minimax(Player):
             lastVal = value
             lastPiece = piece
             lastMove = move
+            if value >= 2000:
+                break
             depth += 1
         debugToFile(f'Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}', 'depthExperiment.txt')
         return lastVal, lastPiece, lastMove
@@ -519,7 +523,7 @@ class Minimax(Player):
         debugToFile(f"Entering depth {depth} for board state:", 'debug-minimax.txt')
         for row in board:
             debugToFile(' '.join(row), 'debug-minimax.txt')
-        if depth == 0 or is_game_over(board, self.turn, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer > self.timeLimit:
             return self.evaluate_board(board), None, None
 
         if maximizing:
@@ -598,15 +602,20 @@ class AlphaBeta(Minimax):
             lastVal = value
             lastPiece = piece
             lastMove = move
+            if value >= 2000:
+                break
             depth += 1
-        with open('depthExperiment.txt', 'a') as f:
-            f.write(f'Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}\n')
+            # debugToFile(f'Next Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}', 'depthExperiment.txt')
+        debugToFile(f'Depth: {depth}, Last Depth: {lastDepth}, Val: {lastVal}, Piece: {lastPiece}, Move: {lastMove}', 'depthExperiment.txt')
         return lastVal, lastPiece, lastMove
 
     def alphaBeta(self, board, depth, alpha, beta, maximizing):
         bestPiece = None
         bestMove = None
-        movesdict = self.get_all_moves(self.botTurn, board)
+        # movesdict = self.get_all_moves(self.botTurn, board)
+        # debugToFile(f'Depth: {depth}, movesdict: {movesdict}', 'depthExperiment.txt')
+        # debugToFile(f'Mandatory Moves: {self.mandatory_moves}', 'depthExperiment.txt')
+        # debugToFile(f'Previous Move: {self.prevMove}', 'depthExperiment.txt')
 
         with open('debug-alphabeta.txt', 'a') as f:
             f.write(f'-'*20)
@@ -618,7 +627,7 @@ class AlphaBeta(Minimax):
             f.write(f'Evaluation: {self.evaluate_board(board)}, Alpha: {alpha}, Beta: {beta}\n')
             f.write(f'-'*20)
 
-        if depth == 0 or is_game_over(board, self.turn, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
+        if depth == 0 or is_game_over(board, self.movesDone) in ['w', 'b', 'draw'] or time.time() - self.timer >= self.timeLimit:
             return self.evaluate_board(board), None, None
 
         transposition = self.probeTransposition(board)
@@ -637,7 +646,7 @@ class AlphaBeta(Minimax):
                 beta = min(beta, transposition['value'])
             else:
                 # Exact Value
-                return transposition['value'], None, None
+                return transposition['value'], transposition['piece'], transposition['move']
         
         if maximizing:
             maxEval = -np.inf
@@ -656,7 +665,7 @@ class AlphaBeta(Minimax):
                     if beta <= alpha:
                         break
 
-            self.storeTransposition(board, depth, maxEval, alpha, beta)
+            self.storeTransposition(board, depth, maxEval, bestPiece, bestMove, alpha, beta)
             return maxEval, bestPiece, bestMove
         
         else:
@@ -676,7 +685,7 @@ class AlphaBeta(Minimax):
                     if beta <= alpha:
                         break
 
-            self.storeTransposition(board, depth, minEval, alpha, beta)
+            self.storeTransposition(board, depth, minEval, bestPiece, bestMove, alpha, beta)
             return minEval, bestPiece, bestMove
             
     def squareMapping(self, square):
@@ -740,9 +749,9 @@ class AlphaBeta(Minimax):
                     hash ^= zobristtable[squareIDX][pieceIndex]
         return hash
     
-    def storeTransposition(self, board, depth, value, alpha, beta):
+    def storeTransposition(self, board, depth, value, piece, move, alpha, beta):
         hash = self.hashBoard(board, self.zobristtable)
-        self.hashtable[hash] = {'depth': depth, 'value': value, 'alpha': alpha,'beta': beta}
+        self.hashtable[hash] = {'depth': depth, 'value': value, 'piece': piece, 'move': move, 'alpha': alpha,'beta': beta}
 
     def probeTransposition(self, board):
         hash = self.hashBoard(board, self.zobristtable)
@@ -793,7 +802,7 @@ def countKings(board):
                 whiteKings += 1
     return whiteKings, blackKings
 
-def is_game_over(board, turn, movesDone):
+def is_game_over(board, movesDone, mandatory_moves):
     tempb = []
     tempbmove = []
     tempbcap = []
@@ -826,12 +835,13 @@ def is_game_over(board, turn, movesDone):
     for normMove, capMove in zip(tempwmove, tempwcap):
         tempw.append(normMove or capMove)
 
-    if turn == 'b':
+    if mandatory_moves:
+        if board[mandatory_moves[0][0]][mandatory_moves[0][1]].lower() == movesDone['turn']:
+            return False
+    else:
         if all(not i for i in tempb) or countBlack(board) == 0:
             return 'w'
-
-    elif turn == 'w':
-        if all(not i for i in tempw) or countWhite(board) == 0:
+        elif all(not i for i in tempw) or countWhite(board) == 0:
             return 'b'
 
     if (blackCount == 1 and blackKing == 1) and\

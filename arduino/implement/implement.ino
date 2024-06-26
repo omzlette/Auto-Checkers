@@ -10,10 +10,12 @@
 #define DRV2_DIR 4
 #define DRV2_STEP 5
 
-#define MUX_S0 6
-#define MUX_S1 7
-#define MUX_S2 8
-#define MUX_S3 9
+#define SOLENOID_VALVE 38
+
+#define MUX1_S0 46
+#define MUX1_S1 47
+#define MUX1_S2 48
+#define MUX1_S3 49
 #define MUX1_SIG A0
 #define MUX2_SIG A1
 #define MUX_THRESHOLD 530 // From expermient
@@ -21,7 +23,23 @@
 #define HALF_OF_SQUARES 16
 #define SQUARES 32
 
-#define SOLENOID_VALVE 10
+#define LED1 22 // On/Off
+#define LED2 23 // Start
+#define LED3 24 // Set Home
+#define LED4 25 // Ready
+#define LED5 26 // Running
+#define LED6 27 // Error
+#define LED7 28 // Black Turn, win = blink
+#define LED8 29 // White Turn, win = blink
+#define LED9 30
+#define LED10 31 // Draw
+
+#define LIMIT_SWITCH1 34
+#define LIMIT_SWITCH2 36
+#define START_BUTTON 35
+#define STOP_BUTTON 37
+#define RESET_BUTTON 39
+#define SETHOME_BUTTON 41
 
 // Declare Variables
 AccelStepper stepper1(1, DRV1_STEP, DRV1_DIR);
@@ -37,6 +55,41 @@ CD74HC4067 mux2LogPINS(MUX_S0, MUX_S1, MUX_S2, MUX_S3);
 int getBoardState();
 void sendBoardState(int boardState);
 int currentBoardState[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+void initialize(){
+  /*
+  Set up the stepper motor drivers enable pins and solenoid valve's relay
+  Stepper drivers are active high, we first set them to low to disable them
+  The relay of solenoid valve is normally open, we set it to low to close the valve
+  */
+  pinMode(DRV1_EN, OUTPUT); digitalWrite(DRV1_EN, LOW);
+  pinMode(DRV2_EN, OUTPUT); digitalWrite(DRV2_EN, LOW);
+  pinMode(SOLENOID_VALVE, OUTPUT); digitalWrite(SOLENOID_VALVE, LOW);
+
+  /*
+  Set up the buttons and limit switches
+  */
+  pinMode(START_BUTTON, INPUT_PULLUP);
+  pinMode(STOP_BUTTON, INPUT_PULLUP);
+  pinMode(RESET_BUTTON, INPUT_PULLUP);
+  pinMode(SETHOME_BUTTON, INPUT_PULLUP);
+  pinMode(LIMIT_SWITCH1, INPUT_PULLUP);
+  pinMode(LIMIT_SWITCH2, INPUT_PULLUP);
+
+  /*
+  Set up the LEDs
+  */
+  pinMode(LED1, OUTPUT); digitalWrite(LED1, LOW);
+  pinMode(LED2, OUTPUT); digitalWrite(LED2, LOW);
+  pinMode(LED3, OUTPUT); digitalWrite(LED3, LOW);
+  pinMode(LED4, OUTPUT); digitalWrite(LED4, LOW);
+  pinMode(LED5, OUTPUT); digitalWrite(LED5, LOW);
+  pinMode(LED6, OUTPUT); digitalWrite(LED6, LOW);
+  pinMode(LED7, OUTPUT); digitalWrite(LED7, LOW);
+  pinMode(LED8, OUTPUT); digitalWrite(LED8, LOW);
+  pinMode(LED9, OUTPUT); digitalWrite(LED9, LOW);
+  pinMode(LED10, OUTPUT); digitalWrite(LED10, LOW);
+}
 
 void setup() {
   cli();
@@ -70,6 +123,7 @@ void setup() {
   // Set up the steppers
   
 
+  // Start interrupt
   sei();
 
 }

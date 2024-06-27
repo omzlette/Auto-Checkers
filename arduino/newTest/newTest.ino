@@ -65,7 +65,7 @@ int count = 0;
 unsigned long DEBUG_TIME, now, last;
 bool DEBUG_RUNNING = true;
 
-float moveHere = (StepsPerRevolution * 35 * sqrt(2)) / (14.33 * PI);           // full diagonal
+float moveHere = (StepsPerRevolution * 350) / (14.33 * PI); // full diagonal 12439.186
 long deltaDist_S1, currPos_S1;
 
 float vel_S1, oldvel_S1, accel_S1;

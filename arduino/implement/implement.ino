@@ -44,8 +44,8 @@
 #define MAX_BUFFER_LENGTH 32
 
 // Declare Variables
-AccelStepper stepper1(1, DRV1_STEP, DRV1_DIR);
-AccelStepper stepper2(1, DRV2_STEP, DRV2_DIR);
+AccelStepper stepperX(1, DRV1_STEP, DRV1_DIR);
+AccelStepper stepperY(1, DRV2_STEP, DRV2_DIR);
 MultiStepper steppers;
 
 CD74HC4067 mux1LogPINS(MUX_S0, MUX_S1, MUX_S2, MUX_S3);
@@ -59,7 +59,9 @@ Max Linear Velocity : 0.1 sqrt2 m/s
 Max Angular Velocity : 19.7378 rad/s
 */
 
-static unsigned long _millis = 0;
+volatile unsigned long _millis = 0;
+volatile unsigned long _LEDBlink = 0;
+// volatile unsigned long _timerDebug_Millis = 0;
 
 const float MICROSTEPS = 8;
 const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
@@ -67,9 +69,11 @@ const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
 const float movementGap = 888.51; // half a square == 25 mm -> (microstepsPerRev * half of square / pulleyRad * 2PI) usteps
 
 long desiredPos[2] = {0, 0};
+int posIDX = 0;
 bool toDesignatedPos = false;
 bool reachedDesignatedPos = false;
 
+bool allRunningDone = false;
 bool drawStatus = false;
 bool whiteWinStatus = false;
 bool blackWinStatus = false;
@@ -78,15 +82,22 @@ bool whiteTurnStatus = false;
 bool errorStatus = false;
 bool illegalMoveStatus = false;
 
-bool startButton = false;
-bool stopButton = false;
-bool resetButton = false;
-bool setHomeButton = false;
-bool limitSwitch1 = false;
-bool limitSwitch2 = false;
+volatile bool startButton = false;
+volatile bool stopButton = false;
+volatile bool resetButton = false;
+volatile bool setHomeButton = false;
+volatile bool limitSwitch1 = false;
+volatile bool limitSwitch2 = false;
+
+bool sentStartStatus = false;
+bool sentStopStatus = false;
+bool sentResetStatus = false;
+bool receivedACK = false;
+volatile byte _mode = 0;
+volatile unsigned int _dataLength = 0;
 
 enum {CONNECTED, DISCONNECTED} connection = DISCONNECTED;
-enum {SETHOME, START_IDLE, RESET_IDLE, IDLE, MOTOR_RUNNING, ERROR} state = SETHOME;
+enum {SETHOME_IDLE, START_IDLE, STOP_IDLE, RESET_IDLE, IDLE, MOTOR_RUNNING, ERROR} state = SETHOME_IDLE;
 
 const char DELIMITER = ';';
 const uint8_t ACK = 0x50;
@@ -100,11 +111,12 @@ void initialize();
 void setupStepper();
 
 void sendBoardData();
-void motorMovement(const char * data, const unsigned int dataLength);
+void movementMapping(const char x, const char y);
 void updateStatus(const char status);
 
 void stateManagement(const byte mode, const char * data, const unsigned int dataLength);
 void processIncomingByte(const byte inByte);
+bool isACK(const byte inByte);
 
 void setup() {
   cli();
@@ -133,7 +145,7 @@ void setup() {
   // Set 128 prescaler
   TCCR2B |= (1 << CS22) | (1 << CS20);
   // enable timer compare interrupt
-  TIMSK2 |= (1 << OCIE2A);
+  TIMSK2 |= (1 << OCIE2A) | (1 << OCIE2B);
 
   // Initialize everything
   initialize();
@@ -148,31 +160,200 @@ void setup() {
 }
 
 ISR(TIMER1_COMPA_vect) {
-  if(toDesignatedPos && !reachedDesignatedPos){
-    steppers.moveTo(desiredPos);
-    toDesignatedPos = false;
-  }
+  /*
+  run() function calls runSpeed() function at least every step interval
+  as stated in the description of the runSpeed() function.
 
-  if(!steppers.run()){
-    // reached the designated position
-    reachedDesignatedPos = true;
-  }
+  As we are using 8 microsteps per step, we need to call runSpeed()
+  
+  */
+  if(connection == CONNECTED){
+    switch(state){
+      case SETHOME_IDLE:
+        digitalWrite(LED4_READY, LOW);
+        if(setHomeButton){
+          digitalWrite(LED3_SETHOME, HIGH);
+          digitalWrite(LED5_RUNNING, HIGH);
 
-  steppers.run();
+          digitalWrite(DRV1_EN, HIGH);
+          digitalWrite(DRV2_EN, HIGH);
+
+          stepperX.setSpeed(-maxSPS);
+          stepperY.setSpeed(-maxSPS);
+          stepperX.runSpeed();
+          stepperY.runSpeed();
+        }
+        // to START_IDLE
+        if(limitSwitch1 && limitSwitch2){
+          stepperX.setCurrentPosition(0);
+          stepperY.setCurrentPosition(0);
+          digitalWrite(DRV1_EN, LOW);
+          digitalWrite(DRV2_EN, LOW);
+          digitlaWrite(LED3_SETHOME, LOW);
+          digitalWrite(LED5_RUNNING, LOW);
+          setHomeButton = false;
+          state = START_IDLE;
+        }
+        break;
+
+      case START_IDLE:
+        digitalWrite(LED4_READY, LOW);
+        if(startButton && !sentStartStatus){
+          digitalWrite(LED2_START, HIGH);
+
+          Serial.write(0x99);
+          Serial.write(';');
+          sentStartStatus = true;
+          startButton = false;
+        }
+        
+        if(sentStartStatus){
+          // receive ACK => change state to IDLE
+          if(receivedACK){
+            state = IDLE;
+            sentStartStatus = false;
+            receivedACK = false;
+          }
+        }
+
+        break;
+
+      case RESET_IDLE:
+        if(resetButton && !sentResetStatus){
+          digitalWrite(LED4_READY, LOW);
+
+          Serial.write(0x97);
+          Serial.write(';');
+          sentResetStatus = true;
+          resetButton = false;
+        }
+
+        if(sentResetStatus){
+          // receive ACK => change state to SETHOME_IDLE
+          sentResetStatus = false;
+        }
+
+        break;
+
+      case IDLE:
+        if(blackWinStatus | whiteWinStatus){
+          state = RESET_IDLE;
+        }
+
+        if(stopButton && !sentStopStatus){
+          digitalWrite(LED5_RUNNING, LOW);
+          digitalWrite(DRV1_EN, LOW);
+          digitalWrite(DRV2_EN, LOW);
+
+          Serial.write(0x98);
+          Serial.write(';');
+          sentStopStatus = true;
+          stopButton = false;
+        }
+
+        if(sentStopStatus){
+          // receive ACK => change state to IDLE
+          sentStopStatus = false;
+        }
+
+        switch(_mode){
+          case 0xF1:
+            //wait for ACK
+            if(receivedACK){
+              state = IDLE;
+              _mode = 0;
+              receivedACK = false;
+            }
+            break;
+        }
+        break;
+
+      case MOTOR_RUNNING:
+        if(reachedDesignatedPos){
+          digitalWrite(LED5_RUNNING, HIGH);
+
+          digitalWrite(DRV1_EN, HIGH);
+          digitalWrite(DRV2_EN, HIGH);
+
+          // do posiition management (array loop w/o loop)
+          if(!allRunningDone){
+            if(!toDesignatedPos){
+              if(posIDX < _dataLength){
+                  // get the desired position (x, y
+                char x = _dataBuffer[posIDX];
+                char y = _dataBuffer[posIDX + 1];
+                movementMapping(x, y);
+                posIDX += 2;
+                reachedDesignatedPos = false;
+              }
+              else{
+                allRunningDone = true;
+              }
+            }
+          }
+          else{
+            digitalWrite(DRV1_EN, LOW);
+            digitalWrite(DRV2_EN, LOW);
+            digitalWrite(LED5_RUNNING, LOW);
+            digitalWrite(LED2_START, LOW);
+
+            Serial.write(CMPLT);
+            state = IDLE;
+          }
+
+          // set the desired position one by one
+          stepperX.moveTo(desiredPos[0]);
+          stepperY.moveTo(desiredPos[1]);
+        }
+
+        if(stepperX.distanceToGo() == 0 && stepperY.distanceToGo() == 0){
+          // reached the designated position
+          reachedDesignatedPos = true;
+          toDesignatedPos = false;
+        }
+
+        steppers.run();
+        break;
+    }
+  }
 }
 
 ISR(TIMER2_COMPA_vect) {
   _millis++;
   if (_millis % 1000 == 0){
+    // 1 second
     digitalWrite(LED9, !digitalRead(LED9));
-    digitalWrite(LED10_DRAW, !digitalRead(LED10_DRAW));
   }
 }
 
+ISR(TIMER2_COMPB_vect) {
+  /*
+  Status indication
+  */
+  _LEDBlink++;
+
+  digitalWrite(LED10_DRAW, drawStatus);
+  digitalWrite(LED7_BTURN, blackTurnStatus);
+  digitalWrite(LED8_WTURN, whiteTurnStatus);
+  digitalWrite(LED6_ERROR, errorStatus);
+  if(_LEDBlink % 100 == 0){
+    if(whiteWinStatus){
+      digitalWrite(LED8_WTURN, !digitalRead(LED8_WTURN));
+    }
+    if(blackWinStatus){
+      digitalWrite(LED7_BTURN, !digitalRead(LED7_BTURN));
+    }
+    if(illegalMoveStatus){
+      digitalWrite(LED6_ERROR, !digitalRead(LED6_ERROR));
+    }
+  }
+
+}
+
 void loop() {
-  // while(Serial.available() > 0){
-  //   processIncomingByte(Serial.read());
-  // }
+  while(Serial.available() > 0){
+    processIncomingByte(Serial.read());
+  }
 }
 
 unsigned long Millis(){
@@ -221,14 +402,14 @@ void initialize(){
 }
 
 void setupStepper(){
-  stepper1.setMaxSpeed(maxSPS);
-  stepper2.setMaxSpeed(maxSPS);
+  stepperX.setMaxSpeed(maxSPS);
+  stepperY.setMaxSpeed(maxSPS);
   
-  stepper1.setAcceleration(maxSPS*20);
-  stepper2.setAcceleration(maxSPS*20);
+  stepperX.setAcceleration(maxSPS*20);
+  stepperY.setAcceleration(maxSPS*20);
 
-  steppers.addStepper(stepper1);
-  steppers.addStepper(stepper2);
+  steppers.addStepper(stepperX);
+  steppers.addStepper(stepperY);
 }
 
 void sendBoardData(){
@@ -286,16 +467,15 @@ void sendBoardData(){
   Serial.write(DELIMITER);
 }
 
-void motorMovement(const char * data, const unsigned int dataLength){
+void movementMapping(const char x, const char y){
   /*
   Move the stepper motors to the designated position
   */
-  // WIP
-  // desiredPos[0] = x * movementGap;
-  // desiredPos[1] = y * movementGap;
+  desiredPos[0] = x * movementGap;
+  desiredPos[1] = y * movementGap;
 
-  // toDesignatedPos = true;
-  // reachedDesignatedPos = false;
+  toDesignatedPos = true;
+  reachedDesignatedPos = false;
 }
 
 void updateStatus(const char status){
@@ -387,53 +567,37 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
     
     case CONNECTED:
       switch(state){
-        case SETHOME:
-          digitalWrite(LED4_READY, LOW);
-          // button press
-
-          // sethome
-
-          // to START_IDLE
-          state = START_IDLE;
-          break;
-        case START_IDLE:
-          digitalWrite(LED4_READY, LOW);
-          // button press
-
-          // start
-          Serial.write(0x99);
-
-          // to IDLE
-          state = IDLE;
-          break;
-        case RESET_IDLE:
-          digitalWrite(LED4_READY, LOW);
-          // button press
-
-          // reset
-
-          // to IDLE
-          state = SETHOME;
-          break;
         case IDLE:
           digitalWrite(LED4_READY, HIGH);
+
+          // turn off the motors, to prevent overheating
+          digitalWrite(DRV1_EN, LOW);
+          digitalWrite(DRV2_EN, LOW);
+
           switch (mode){
             // Mode 0xF1: Requested for board state
             case 0xF1:
+              Serial.write(ACK);
               sendBoardData();
-              // then wait for ack
+              _mode = mode;
               break;
             // Mode 0xF2: Requested for stepper movement
             case 0xF2:
+              _mode = mode;
+              _dataBuffer = data;
+              _dataLength = dataLength;
+              Serial.write(ACK);
               state = MOTOR_RUNNING;
               break;
             // Mode 0xF3: Requested for status indication
             case 0xF3:
               updateStatus(data[0]);
+              Serial.write(ACK);
               break;
             // Mode 0xFF: Disconnection request
             case 0xFF:
               connection = DISCONNECTED;
+              state = SETHOME_IDLE;
               Serial.write(ACK);
               break;
             // invalid mode (unknown command, should not happen)
@@ -441,14 +605,6 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
               Serial.write(NACK);
               break;
           }
-          break;
-        case MOTOR_RUNNING:
-          digitalWrite(LED4_READY, LOW);
-          digitalWrite(LED5_RUNNING, HIGH);
-          // set motor track (1 byte per motor)
-
-          // if completed
-          state = IDLE;
           break;
       }
       break;
@@ -474,14 +630,23 @@ void processIncomingByte(const byte inByte){
 
     if (mode_received){
       byte calculatedChecksum = mode;
-      for (int i = 0; i < bufferIDX - 1; i++){
-        calculatedChecksum ^= RxBuffer[i];
-        dataBuffer[i] = RxBuffer[i];
+      mode_received = false;
+
+      if(bufferIDX > 0){
+        for (int i = 0; i < bufferIDX - 1; i++){
+          calculatedChecksum ^= RxBuffer[i];
+          dataBuffer[i] = RxBuffer[i];
+        }
       }
 
       if (calculatedChecksum == checksum){
+        if(isACK(mode)){
+          receivedACK = true;
+        }
+        else{
+          receivedACK = false;
+        }
         // Checksum is correct, send ACK and process the data
-        Serial.write(ACK);
         stateManagement(mode, dataBuffer, bufferIDX - 1);
       }
       else{
@@ -489,7 +654,6 @@ void processIncomingByte(const byte inByte){
         Serial.write(NACK);
       }
     }
-
     // reset buffer for next time
     bufferIDX = 0;
     break;
@@ -516,4 +680,8 @@ void processIncomingByte(const byte inByte){
     }
     break;
   }
+}
+
+bool isACK(const byte inByte){
+  return inByte == ACK;
 }

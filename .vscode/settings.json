@@ -9,6 +9,14 @@
         "xstring": "cpp",
         "xutility": "cpp",
         "cmath": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "charconv": "cpp",
+        "istream": "cpp",
+        "optional": "cpp",
+        "random": "cpp",
+        "xiosbase": "cpp",
+        "xlocale": "cpp",
+        "xmemory": "cpp",
+        "*.rh": "cpp"
     }
 }

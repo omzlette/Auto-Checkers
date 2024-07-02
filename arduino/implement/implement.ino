@@ -94,6 +94,7 @@ bool sentStopStatus = false;
 bool sentResetStatus = false;
 bool receivedACK = false;
 volatile byte _mode = 0;
+volatile const char * _dataBuffer = NULL;
 volatile unsigned int _dataLength = 0;
 
 enum {CONNECTED, DISCONNECTED} connection = DISCONNECTED;
@@ -152,7 +153,13 @@ void setup() {
   setupStepper();
 
   // Set up serial communication
-  // Serial.begin(115200);
+  Serial.begin(115200);
+
+  // Set up buttons
+  attachInterrupt(digitalPinToInterrupt(START_BUTTON), []{if(digitalRead(START_BUTTON) == 0){startButton = true;}}, FALLING);
+  attachInterrupt(digitalPinToInterrupt(STOP_BUTTON), []{if(digitalRead(STOP_BUTTON) == 0){stopButton = true;}}, FALLING);
+  attachInterrupt(digitalPinToInterrupt(RESET_BUTTON), []{if(digitalRead(RESET_BUTTON) == 0){resetButton = true;}}, FALLING);
+  attachInterrupt(digitalPinToInterrupt(SETHOME_BUTTON), []{if(digitalRead(SETHOME_BUTTON) == 0){setHomeButton = true;}}, FALLING);
 
   // Start interrupts
   sei();

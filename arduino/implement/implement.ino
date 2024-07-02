@@ -214,13 +214,11 @@ ISR(TIMER1_COMPA_vect) {
           startButton = false;
         }
         
-        if(sentStartStatus){
+        if(sentStartStatus && receivedACK){
           // receive ACK => change state to IDLE
-          if(receivedACK){
-            state = IDLE;
-            sentStartStatus = false;
-            receivedACK = false;
-          }
+          state = IDLE;
+          sentStartStatus = false;
+          receivedACK = false;
         }
 
         break;
@@ -235,9 +233,11 @@ ISR(TIMER1_COMPA_vect) {
           resetButton = false;
         }
 
-        if(sentResetStatus){
+        if(sentResetStatus && receivedACK){
           // receive ACK => change state to SETHOME_IDLE
+          state = SETHOME_IDLE;
           sentResetStatus = false;
+          receivedACK = false;
         }
 
         break;
@@ -258,9 +258,11 @@ ISR(TIMER1_COMPA_vect) {
           stopButton = false;
         }
 
-        if(sentStopStatus){
-          // receive ACK => change state to IDLE
+        if(sentStopStatus && receivedACK){
+          // receive ACK => change state to SETHOME_IDLE
+          state = SETHOME_IDLE;
           sentStopStatus = false;
+          receivedACK = false;
         }
 
         switch(_mode){

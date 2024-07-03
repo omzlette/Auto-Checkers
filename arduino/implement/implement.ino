@@ -68,10 +68,11 @@ const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
 
 const float movementGap = 888.51; // half a square == 25 mm -> (microstepsPerRev * half of square / pulleyRad * 2PI) usteps
 
-long desiredPos[2] = {0, 0};
-int posIDX = 0;
-bool toDesignatedPos = false;
-bool reachedDesignatedPos = false;
+volatile long desiredPos[2] = {0, 0};
+volatile int posIDX = 0;
+volatile bool toDesignatedPos = false;
+volatile bool reachedDesignatedPos = false;
+volatile bool triggerSolenoid = false;
 
 bool allRunningDone = false;
 bool drawStatus = false;
@@ -278,7 +279,7 @@ ISR(TIMER1_COMPA_vect) {
         break;
 
       case MOTOR_RUNNING:
-        if(reachedDesignatedPos){
+        if(!reachedDesignatedPos){
           digitalWrite(LED5_RUNNING, HIGH);
 
           digitalWrite(DRV1_EN, HIGH);
@@ -305,6 +306,9 @@ ISR(TIMER1_COMPA_vect) {
             digitalWrite(DRV2_EN, LOW);
             digitalWrite(LED5_RUNNING, LOW);
             digitalWrite(LED2_START, LOW);
+            
+            digitalWrite(SOLENOID_VALVE, LOW);
+            triggerSolenoid = false;
 
             Serial.write(CMPLT);
             state = IDLE;
@@ -315,10 +319,14 @@ ISR(TIMER1_COMPA_vect) {
           stepperY.moveTo(desiredPos[1]);
         }
 
-        if(stepperX.distanceToGo() == 0 && stepperY.distanceToGo() == 0){
+        if(stepperX.distanceToGo() == 0 && stepperY.distanceToGo() == 0 && toDesignatedPos){
           // reached the designated position
           reachedDesignatedPos = true;
           toDesignatedPos = false;
+          if(!triggerSolenoid && (posIDX - 2) % 2 == 0){
+            digitalWrite(SOLENOID_VALVE, HIGH);
+            triggerSolenoid = true;
+          }
         }
 
         steppers.run();

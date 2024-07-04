@@ -100,4 +100,5 @@ def main():
 
                         else:
                             WPiece, WMove = player2.play(board.board)
+                            
             

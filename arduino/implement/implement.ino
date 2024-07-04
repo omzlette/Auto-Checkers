@@ -306,7 +306,7 @@ ISR(TIMER1_COMPA_vect) {
             digitalWrite(DRV2_EN, LOW);
             digitalWrite(LED5_RUNNING, LOW);
             digitalWrite(LED2_START, LOW);
-            
+
             digitalWrite(SOLENOID_VALVE, LOW);
             triggerSolenoid = false;
 
@@ -575,9 +575,11 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
           digitalWrite(LED1_ONOFF, HIGH);
           connection = CONNECTED;
           Serial.write(ACK);
+          Serial.write(DELIMITER);
           break;
         default:
           Serial.write(NACK);
+          Serial.write(DELIMITER);
           break;
       }
       break;
@@ -595,6 +597,7 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
             // Mode 0xF1: Requested for board state
             case 0xF1:
               Serial.write(ACK);
+              Serial.write(DELIMITER);
               sendBoardData();
               _mode = mode;
               break;
@@ -604,22 +607,26 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
               _dataBuffer = data;
               _dataLength = dataLength;
               Serial.write(ACK);
+              Serial.write(DELIMITER);
               state = MOTOR_RUNNING;
               break;
             // Mode 0xF3: Requested for status indication
             case 0xF3:
               updateStatus(data[0]);
               Serial.write(ACK);
+              Serial.write(DELIMITER);
               break;
             // Mode 0xFF: Disconnection request
             case 0xFF:
               connection = DISCONNECTED;
               state = SETHOME_IDLE;
               Serial.write(ACK);
+              Serial.write(DELIMITER);
               break;
             // invalid mode (unknown command, should not happen)
             default:
               Serial.write(NACK);
+              Serial.write(DELIMITER);
               break;
           }
           break;

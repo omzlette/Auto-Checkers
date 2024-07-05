@@ -150,12 +150,31 @@ def main():
 
     path = astar(maze, start, end)
     print(path)
+    
+    flattenPath = [item for sublist in path for item in sublist]
+    print(flattenPath)
+    print(bytes(flattenPath))
+    
+    from functools import reduce
 
-    for i in range(len(path)):
-        maze[path[i][0]][path[i][1]] = 5
+    buffer = [0xF2] + flattenPath
+    checksum = reduce(lambda x, y: x | y, buffer)
 
-    for i in range(len(maze)):
-        print(maze[i])
+    checksumForLoop = 0
+    # checksumSum = sum(buffer)
+    print(buffer)
+    print(checksum)
+
+    for i in buffer:
+        checksumForLoop |= i
+    
+    print(checksumForLoop)
+
+    # for i in range(len(path)):
+    #     maze[path[i][0]][path[i][1]] = 5
+
+    # for i in range(len(maze)):
+    #     print(maze[i])
 
 if __name__ == '__main__':
     main()

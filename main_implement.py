@@ -2,6 +2,8 @@ import pygame
 from pygame.locals import *
 from checkers import *
 from player import *
+from pathfinding import *
+from functools import reduce
 import serial
 import time
 
@@ -72,6 +74,7 @@ def main():
                     continue
             
             else:
+                captureFlag = False
                 while running:
                     if ser.read(1) == STOP or ser.read(1) == RESET:
                         # reset or stop
@@ -100,5 +103,33 @@ def main():
 
                         else:
                             WPiece, WMove = player2.play(board.board)
-                            
-            
+                            if WPiece is not None and WMove is not None:
+                                player2.prevCount = countBlack(board.board) + countWhite(board.board)
+                                board.board, board.turn, WCapture = player2.update_board(board.board, WPiece, WMove)
+                                if WCapture is not None:
+                                    captureFlag = True
+                                    mappedBoard, startpos, endpos = mapping(board.board, WCapture, None)
+                                    pathPoint = astar(mappedBoard, startpos, endpos)
+                                    flattenPath = [item for sublist in pathPoint for item in sublist]
+                                    TxBuffer = [0xF2] + flattenPath + reduce(lambda x, y: x | y, [0xF2] + flattenPath)
+                                    ser.write(TxBuffer)
+                                    ser.write(DELIMITER)
+                                
+                                ser.read(1)
+                                if ser.read(1) == CMPLT:
+                                    if captureFlag:
+                                        mappedBoard, startpos, endpos = mapping(board.board, WCapture, WMove)
+                                        pathPoint = astar(mappedBoard, startpos, endpos)
+                                        flattenPath = [item for sublist in pathPoint for item in sublist]
+                                        TxBuffer = [0xF2] + flattenPath + reduce(lambda x, y: x | y, [0xF2] + flattenPath)
+                                        ser.write(TxBuffer)
+                                        ser.write(DELIMITER)
+                                    
+                                        ser.read(1)
+                                        if ser.read(1) == CMPLT:
+                                            player1.turn = board.turn
+                                            player2.turn = board.turn
+                                    
+                                    else:
+                                        player1.turn = board.turn
+                                        player2.turn = board.turn

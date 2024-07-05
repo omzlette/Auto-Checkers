@@ -658,7 +658,7 @@ void processIncomingByte(const byte inByte){
 
       if(bufferIDX > 0){
         for (int i = 0; i < bufferIDX - 1; i++){
-          calculatedChecksum ^= RxBuffer[i];
+          calculatedChecksum |= RxBuffer[i];
           dataBuffer[i] = RxBuffer[i];
         }
       }

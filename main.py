@@ -86,7 +86,7 @@ def main():
                     WPiece, WMove = player2.play(board.board)
                     if WPiece is not None and WMove is not None:
                         player2.prevCount = countBlack(board.board) + countWhite(board.board)
-                        board.board, board.turn = player2.update_board(board.board, WPiece, WMove)
+                        board.board, board.turn, _ = player2.update_board(board.board, WPiece, WMove)
                         player1.turn = board.turn
                         player2.turn = board.turn
 

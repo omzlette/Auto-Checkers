@@ -215,8 +215,9 @@ class Player():
     
     def update_board(self, board, piece, move):
         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(piece[0], piece[1], self.turn, board)
+        capture_piece = self.capturePos
         board, turn = self.move_piece(move, self.turn, board)
-        return board, turn
+        return board, turn, capture_piece
 
     def simulate_game(self, piece, move, turn, board):
         new_board = copy.deepcopy(board)

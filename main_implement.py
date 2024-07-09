@@ -24,12 +24,60 @@ def initialize():
     return player1, player2, board
 
 def compare_board_data(board, data:bytes):
-    byteboard = [[0 for i in range(8)] for j in range(8)]
     for row, byte in enumerate(data):
         for col in range(8):
             if board[row][col].lower() in ['b', 'w'] and byte & (128 >> col) == 0:
                 return False
     return True
+
+def get_move(prevBoard, newBoard):
+    # exclusive to black
+    pieceFrom = None
+    pieceTo = None
+    capturedList = []
+    for row in range(8):
+        for col in range(8):
+            if prevBoard[row][col] != '-' and newBoard[row][col] == 0:
+                if prevBoard[row][col] in ['b', 'B']:
+                    pieceFrom = (row, col)
+                elif prevBoard[row][col] in ['w', 'W']:
+                    capturedList.append((row, col))
+            if prevBoard[row][col] in ['-'] and newBoard[row][col] != 0:
+                pieceTo = (row, col)
+
+    if capturedList:
+        selectedList = [pieceFrom]
+        moves = []
+        
+        for row, col in capturedList:
+            rowDelta = row - pieceFrom[0]
+            rowDelta = rowDelta // abs(rowDelta)
+            colDelta = col - pieceFrom[1]
+            colDelta = colDelta // abs(colDelta)
+            pieceFrom = (row + rowDelta, col + colDelta)
+            moves.append(pieceFrom)
+
+        selectedList.extend(moves[:-1])
+    elif pieceFrom is not None and pieceTo is not None:
+        selectedList = [pieceFrom]
+        moves = [pieceTo]
+
+    return selectedList, moves, capturedList
+
+def checkLegalMove(selectedList, moveList, capturedList):
+    if selectedList is None or moveList is None:
+        return False
+    elif selectedList is not None and moveList is not None:
+        if len(selectedList) != len(moveList):
+            return False
+        elif len(selectedList) == len(moveList):
+            for i in range(len(selectedList)):
+                if selectedList[i] == moveList[i]:
+                    return False
+                if capturedList is not None:
+                    if moveList[i] in capturedList:
+                        return False
+            return True
 
 def main():
     connectedMCU = False
@@ -63,20 +111,25 @@ def main():
                     RxBuffer = ser.read_until(DELIMITER)
                     if RxBuffer == ACK:
                         # receive board data from MCU
-                        del RxBuffer
                         data = ser.read_until(DELIMITER)
                         boardMatch = compare_board_data(board.board, data)
+                        ser.write(ACK)
+                        ser.write(DELIMITER)
                         if boardMatch:
-                            ser.write(ACK)
                             startFlag = True
-                    else:
-                        continue
-                    continue
+                            TxBuffer = [0xF3] + [0b00010000] + reduce(lambda x, y: x | y, [0xF3, 0b00010000])
+                        else:
+                            TxBuffer = [0xF3] + [0b01000000] + reduce(lambda x, y: x | y, [0xF3, 0b01000000])
+                            ser.write(TxBuffer)
+                            ser.write(DELIMITER)
+                        del data, RxBuffer
             
             else:
                 captureFlag = False
+                userPlayed = False
+                botPlayed = False
                 while running:
-                    if ser.read(1) == STOP or ser.read(1) == RESET:
+                    if ser.read_until(DELIMITER) == STOP or ser.read_until(DELIMITER) == RESET:
                         # reset or stop
                         running = False
                         startFlag = False
@@ -89,23 +142,51 @@ def main():
                         isGameOver = is_game_over(board.board, board.movesDone, player2.mandatory_moves)
 
                     if not isGameOver:
-                        if board.turn == player1.ourTurn:
-                            for event in pygame.event.get():
-                                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                                    print('Early Exiting...')
-                                    running = False
-                                if event.type == pygame.MOUSEBUTTONDOWN:
-                                    row, col = player1.get_mouse_pos()
-                                    BMove = row, col
-                                    board.board, board.turn, BPiece = player1.handle_mouse_click(row, col, board.board)
-                                    player1.turn = board.turn
-                                    player2.turn = board.turn
+                        if board.turn == 'b':
+                            userPlayed = False
+                            user_time = time.time()
+                            while time.time() - user_time < 3:
+                                ser.write(0xF1) # Send data board request
+                                RxBuffer = ser.read_until(DELIMITER)
+                                if RxBuffer == ACK:
+                                    # receive board data from MCU
+                                    del RxBuffer
+                                    data = ser.read_until(DELIMITER)
+                                    BPieces, BMoves, BCaptures = checkLegalMove(board.board, data)
+                                    ser.write(ACK)
+                                    ser.write(DELIMITER)
+                                    legalMove = checkLegalMove(BPieces, BMoves, BCaptures)
+                                    if legalMove:
+                                        for BPiece, BMove in zip(BPieces, BMoves):
+                                            board.board, board.turn, _ = player1.update_board(board.board, BPiece, BMove)
+                                            board.updateMovesDict(BPiece, BMove, 'b')
+                                        TxBuffer = [0xF3] + [0b00100000] + reduce(lambda x, y: x | y, [0xF3, 0b00100000])
+                                    else:
+                                        TxBuffer = [0xF3] + [0b10010000] + reduce(lambda x, y: x | y, [0xF3, 0b10010000])
+                                    
+                                    ser.write(TxBuffer)
+                                    ser.write(DELIMITER)
+                                    while userPlayed == False:
+                                        RxBuffer = ser.read_until(DELIMITER)
+                                        if RxBuffer == ACK:
+                                            player1.turn = board.turn
+                                            player2.turn = board.turn
+                                            userPlayed = True
+                                            del data
+                                            del RxBuffer
+                                            break
+                                        else:
+                                            TxBuffer = [0xF3] + [0b00100000] + reduce(lambda x, y: x | y, [0xF3, 0b00100000])
+                                            ser.write(TxBuffer)
+                                            ser.write(DELIMITER)
 
                         else:
+                            botPlayed = False
                             WPiece, WMove = player2.play(board.board)
                             if WPiece is not None and WMove is not None:
                                 player2.prevCount = countBlack(board.board) + countWhite(board.board)
                                 board.board, board.turn, WCapture = player2.update_board(board.board, WPiece, WMove)
+                                board.updateMovesDict(WPiece, WMove, 'w')
                                 if WCapture is not None:
                                     captureFlag = True
                                     mappedBoard, startpos, endpos = mapping(board.board, WCapture, None)
@@ -127,9 +208,52 @@ def main():
                                     
                                         ser.read(1)
                                         if ser.read(1) == CMPLT:
-                                            player1.turn = board.turn
-                                            player2.turn = board.turn
+                                            TxBuffer = [0xF3] + [0b00010000] + reduce(lambda x, y: x | y, [0xF3, 0b00010000])
+                                            ser.write(TxBuffer)
+                                            ser.write(DELIMITER)
+                                            while botPlayed == False:
+                                                RxBuffer = ser.read_until(DELIMITER)
+                                                if RxBuffer == ACK:
+                                                    player1.turn = board.turn
+                                                    player2.turn = board.turn
+                                                    botPlayed = True
+                                                    del RxBuffer
+                                                    break
+                                                else:
+                                                    TxBuffer = [0xF3] + [0b00010000] + reduce(lambda x, y: x | y, [0xF3, 0b00010000])
+                                                    ser.write(TxBuffer)
+                                                    ser.write(DELIMITER)
                                     
                                     else:
-                                        player1.turn = board.turn
-                                        player2.turn = board.turn
+                                        TxBuffer = [0xF3] + [0b00010000] + reduce(lambda x, y: x | y, [0xF3, 0b00010000])
+                                        ser.write(TxBuffer)
+                                        ser.write(DELIMITER)
+                                        while botPlayed == False:
+                                            RxBuffer = ser.read_until(DELIMITER)
+                                            if RxBuffer == ACK:
+                                                player1.turn = board.turn
+                                                player2.turn = board.turn
+                                                botPlayed = True
+                                                del RxBuffer
+                                                break
+                                            else:
+                                                TxBuffer = [0xF3] + [0b00010000] + reduce(lambda x, y: x | y, [0xF3, 0b00010000])
+                                                ser.write(TxBuffer)
+                                                ser.write(DELIMITER)
+
+                    elif isGameOver:
+                        if isGameOver == 'b':
+                            TxBuffer = [0xF3] + [0b00000100] + reduce(lambda x, y: x | y, [0xF3, 0b00000100])
+                        elif isGameOver == 'w':
+                            TxBuffer = [0xF3] + [0b00000010] + reduce(lambda x, y: x | y, [0xF3, 0b00000010])
+                        elif isGameOver == 'draw':
+                            TxBuffer = [0xF3] + [0b00000001] + reduce(lambda x, y: x | y, [0xF3, 0b00000001])
+
+                        ser.write(TxBuffer)
+                        ser.write(DELIMITER)
+
+                        RxBuffer = ser.read_until(DELIMITER)
+                        if RxBuffer == ACK:
+                            running = False
+                            startFlag = False
+                            break

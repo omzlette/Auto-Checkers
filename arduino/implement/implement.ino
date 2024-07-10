@@ -323,7 +323,7 @@ ISR(TIMER1_COMPA_vect) {
           // reached the designated position
           reachedDesignatedPos = true;
           toDesignatedPos = false;
-          if(!triggerSolenoid && (posIDX - 2) % 2 == 0){
+          if(!triggerSolenoid && posIDX - 2 == 0){
             digitalWrite(SOLENOID_VALVE, HIGH);
             triggerSolenoid = true;
           }
@@ -577,6 +577,12 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
           Serial.write(ACK);
           Serial.write(DELIMITER);
           break;
+        case 0xFF:  // Disconnection request
+          digitalWrite(LED1_ONOFF, LOW);
+          connection = DISCONNECTED;
+          Serial.write(ACK);
+          Serial.write(DELIMITER);
+          break;
         default:
           Serial.write(NACK);
           Serial.write(DELIMITER);
@@ -612,9 +618,9 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
               break;
             // Mode 0xF3: Requested for status indication
             case 0xF3:
-              updateStatus(data[0]);
               Serial.write(ACK);
               Serial.write(DELIMITER);
+              updateStatus(data[0]);
               break;
             // Mode 0xFF: Disconnection request
             case 0xFF:

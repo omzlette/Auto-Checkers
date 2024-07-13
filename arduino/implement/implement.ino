@@ -161,6 +161,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(STOP_BUTTON), []{if(digitalRead(STOP_BUTTON) == 0){stopButton = true;}}, FALLING);
   attachInterrupt(digitalPinToInterrupt(RESET_BUTTON), []{if(digitalRead(RESET_BUTTON) == 0){resetButton = true;}}, FALLING);
   attachInterrupt(digitalPinToInterrupt(SETHOME_BUTTON), []{if(digitalRead(SETHOME_BUTTON) == 0){setHomeButton = true;}}, FALLING);
+  attachInterrupt(digitalPinToInterrupt(LIMIT_SWITCH1), []{if(digitalRead(LIMIT_SWITCH1) == 1){limitSwitch1 = true;}}, RISING);
+  attachInterrupt(digitalPinToInterrupt(LIMIT_SWITCH2), []{if(digitalRead(LIMIT_SWITCH2) == 1){limitSwitch2 = true;}}, RISING);
 
   // Start interrupts
   sei();
@@ -396,10 +398,12 @@ void initialize(){
   /*
   Set up the buttons and limit switches
   */
-  pinMode(START_BUTTON, INPUT);
-  pinMode(STOP_BUTTON, INPUT);
-  pinMode(RESET_BUTTON, INPUT);
-  pinMode(SETHOME_BUTTON, INPUT);
+  pinMode(START_BUTTON, INPUT_PULLUP);
+  pinMode(STOP_BUTTON, INPUT_PULLUP);
+  pinMode(RESET_BUTTON, INPUT_PULLUP);
+  pinMode(SETHOME_BUTTON, INPUT_PULLUP);
+
+  // Limit switches (Normally Open)
   pinMode(LIMIT_SWITCH1, INPUT);
   pinMode(LIMIT_SWITCH2, INPUT);
 

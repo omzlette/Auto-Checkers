@@ -122,7 +122,7 @@ def match_images(img, template):
 
     return loc
 
-def getMove(prevBoard, newBoard, turn, numGames):
+def getMove(prevBoard, newBoard, turn):
     convertTurn = {'b': (1, 3), 'w': (2, 4)}
     selected = None
     move = None
@@ -136,16 +136,10 @@ def getMove(prevBoard, newBoard, turn, numGames):
                 move = (row, col)
 
     if selected is not None and move is not None and pieceType is not None:
-        if numGames % 2 == 0:
-            if pieceType == 1 and move[0] == 7:
-                pieceType = 3
-            elif pieceType == 2 and move[0] == 0:
-                pieceType = 4
-        else:
-            if pieceType == 1 and move[0] == 0:
-                pieceType = 3
-            elif pieceType == 2 and move[0] == 7:
-                pieceType = 4
+        if pieceType == 1 and move[0] == 7:
+            pieceType = 3
+        elif pieceType == 2 and move[0] == 0:
+            pieceType = 4
 
     return selected, move, pieceType
 
@@ -166,7 +160,7 @@ def getBoardState(boardimg, corners):
                     break
     return board, sorted_pieces
 
-def update_board_state(prevBoard, currBoard, turn, numGames):
+def update_board_state(prevBoard, currBoard, turn):
     convertTurn = {'b': (1, 3), 'w': (2, 4)}
     otherPlayer = 'b' if turn == 'w' else 'w'
     updated_board = copy.deepcopy(prevBoard)
@@ -175,7 +169,7 @@ def update_board_state(prevBoard, currBoard, turn, numGames):
     for row in range(8):
         for col in range(8):
             if currBoard[row][col] == 1 and prevBoard[row][col] == 0:
-                _, _, pieceType = getMove(prevBoard, currBoard, turn, numGames)
+                _, _, pieceType = getMove(prevBoard, currBoard, turn)
                 updated_board[row][col] = pieceType
             elif currBoard[row][col] == 0 and prevBoard[row][col] != 0:
                 updated_board[row][col] = 0
@@ -206,7 +200,7 @@ def getMultipleCapture(prevBoard, newBoard, turn, captured):
 
     return selectedList, moves
 
-def initGame(numGames):
+def initGame():
     turn = 'b'
     # initialize the board (0: empty, 1: black, 2: white, 3: black king, 4: white king)
     prevBoard = np.array([[0, 1, 0, 1, 0, 1, 0, 1],
@@ -217,13 +211,9 @@ def initGame(numGames):
                           [0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 2, 0, 2, 0, 2, 0, 2],
                           [2, 0, 2, 0, 2, 0, 2, 0]])
-    
-    if numGames % 2 != 0:
-        prevBoard = np.flip(prevBoard, 0)
-        prevBoard = np.flip(prevBoard, 1)
 
-    bot = 'b' if numGames % 2 == 0 else 'w'
-    our = 'w' if numGames % 2 == 0 else 'b'
+    bot = 'b'
+    our = 'w'
     return turn, prevBoard, bot, our
 
 def main():
@@ -235,8 +225,7 @@ def main():
         baudrate=115200,
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        timeout=1)
+        stopbits=serial.STOPBITS_ONE)
 
     TxBuffer = "~/miniforge3/envs/checkers/bin/python ~/Auto-Checkers/main-copy.py\r"
     print(f"Sending: {TxBuffer.strip()}")
@@ -247,11 +236,11 @@ def main():
     jetson.reset_output_buffer()
     clear = lambda: os.system('cls')
 
-    while numGames < 100:
+    while numGames < 50:
         if startedFlag == False:
             print("Game started")
             startedFlag = True
-            turn, prevBoard, bot, our = initGame(numGames)
+            turn, prevBoard, bot, our = initGame()
             time.sleep(3)
 
         # time.sleep(5)
@@ -276,13 +265,9 @@ def main():
                     for row in currBoard:
                         f.write(f'{row}\n')
                 # get the move
-                selected, move, _ = getMove(prevBoard, currBoard, turn, numGames)
+                selected, move, _ = getMove(prevBoard, currBoard, turn)
 
-                if selected is not None and move is not None:
-                    if numGames % 2 != 0:
-                        selected = (7 - selected[0], 7 - selected[1])
-                        move = (7 - move[0], 7 - move[1])
-                    
+                if selected is not None and move is not None:                    
                     print('1.Current board:')
                     for row in currBoard:
                         print(row)
@@ -290,7 +275,7 @@ def main():
                     for row in prevBoard:
                         print(row)
 
-                    _, capturedPiece = update_board_state(prevBoard, currBoard, turn, numGames)
+                    _, capturedPiece = update_board_state(prevBoard, currBoard, turn)
                     # send the move
                     if len(capturedPiece) < 2:
                         TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
@@ -304,7 +289,7 @@ def main():
                             print("Move sent successfully")
                             # update the board state
                             currBoard, _ = getBoardState(screen_binary, corners)
-                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn, numGames)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
                             selected = None
                             move = None
                             turn = response.replace('ACK', '')
@@ -328,9 +313,6 @@ def main():
                             #     f.write(f'{selectedList[countNum]}, {moves[countNum]}\n')
                             time.sleep(0.1)
                             selected, move = selectedList[countNum], moves[countNum]
-                            if numGames % 2 != 0:
-                                selected = (7 - selected[0], 7 - selected[1])
-                                move = (7 - move[0], 7 - move[1])
                             TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
                             print(f'Sent: {TxBuffer.strip()}')
                             jetson.write(TxBuffer.encode('utf-8'))
@@ -347,7 +329,7 @@ def main():
                         if countNum >= len(selectedList):
                             # update the board state
                             currBoard, _ = getBoardState(screen_binary, corners)
-                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn, numGames)
+                            prevBoard, _ = update_board_state(prevBoard, currBoard, turn)
                             selected = None
                             move = None
                             time.sleep(0.5)
@@ -369,10 +351,6 @@ def main():
                         jetson.write('ACK\n'.encode('utf-8'))
                         print("ACK sent")
                         if selected is not None and move is not None:
-                            if numGames % 2 != 0:
-                                selected = (7 - selected[0], 7 - selected[1])
-                                move = (7 - move[0], 7 - move[1])
-
                             selectedCoords, _, _ = get_board_squares(selected, corners)
                             moveCoords, _, _ = get_board_squares(move, corners)
 
@@ -420,6 +398,12 @@ def main():
                     cv.rectangle(screen, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
         
                 # reset the board
+                pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
+                pyautogui.click()
+                time.sleep(0.5)
+                pyautogui.moveTo(loc[1][-1] + 320, loc[0][-1] - 220)
+                pyautogui.click()
+                time.sleep(0.5)
                 pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
                 pyautogui.click()
                 jetson.write('next\n'.encode('utf-8'))

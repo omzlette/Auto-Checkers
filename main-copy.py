@@ -4,32 +4,24 @@ from player import *
 import copy
 import serial
 
-def initGame(numGames):
+def initGame():
     board = Checkers()
-    if numGames % 2 == 0:
-        player1 = User('b', board.board, board.movesDone)
-        player2 = AlphaBeta('w', board.board, board.movesDone)
-    else:
-        player1 = AlphaBeta('b', board.board, board.movesDone)
-        player2 = User('w', board.board, board.movesDone)
+    player1 = User('b', board.board, board.movesDone)
+    player2 = AlphaBeta('w', board.board, board.movesDone)
 
     return player1, player2, board
 
-def main():
-                   
-    numGames = 0
-    
+def main():    
     experiment = serial.Serial('/dev/ttyGS0',
                                  baudrate=115200,
                                  parity=serial.PARITY_NONE,
                                  stopbits=serial.STOPBITS_ONE,
-                                 bytesize=serial.EIGHTBITS,
-                                 timeout=1)
+                                 bytesize=serial.EIGHTBITS)
 
     experiment.reset_input_buffer()
     experiment.reset_output_buffer()
-    while numGames < 100:
-        player1, player2, board = initGame(numGames)
+    while numGames < 50:
+        player1, player2, board = initGame()
         isGameOver = False
         running = True
         nummoves = 0
@@ -135,8 +127,8 @@ def main():
                         running = False
                         numGames += 1
                         with open('/home/estel/Auto-Checkers/results.txt', 'a') as f:
-                            f.write(f'Game {numGames}: {isGameOver}, No. moves: {nummoves}\n')
-                            f.write(f'Moves Done: {board.movesDone}\n\n')
+                            f.write(f'{numGames}, {nummoves}, {board.movesDone}, {isGameOver}\n')
+                        del board, player1, player2
 
             else:
                 if experiment.in_waiting > 0:
@@ -145,8 +137,7 @@ def main():
                         running = False
                         numGames += 1
                         with open('/home/estel/Auto-Checkers/results.txt', 'a') as f:
-                            f.write(f'Game {numGames}: {isGameOver}, No. moves: {nummoves}\n')
-                            f.write(f'Moves Done: {board.movesDone}\n\n')
+                            f.write(f'{numGames}, {nummoves}, {board.movesDone}, {isGameOver}\n')
                         del board, player1, player2
                         
 

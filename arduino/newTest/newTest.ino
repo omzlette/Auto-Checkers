@@ -11,7 +11,9 @@
 
 volatile unsigned long _millis = 0;
 volatile unsigned long moveUpLast = 0;
+volatile unsigned long moveDownLast = 0;
 volatile unsigned long startCntDown = 0;
+volatile unsigned long timeout = 0;
 
 const float MICROSTEPS = 8;
 const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
@@ -19,13 +21,17 @@ const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
 const float movementGap = 888.51; // half a square == 25 mm -> (microstepsPerRev * half of square / pulleyRad * 2PI) usteps
 
 volatile unsigned long last = 0;
-volatile unsigned long deltaDist = 0;
+volatile unsigned long now = 0;
 volatile long currPos = 0;
 volatile float vel = 0;
 volatile bool Started = false;
 volatile bool moveUp = false;
+volatile bool moveDown = false;
 volatile bool changeDir = false;
 volatile bool buttonPressed = false;
+volatile bool ended = false;
+volatile bool sendData = false;
+volatile bool timeoutFlag = false;
 
 AccelStepper stepperX(1, DRV1_STEP, DRV1_DIR);
 AccelStepper stepperY(1, DRV2_STEP, DRV2_DIR);
@@ -59,17 +65,19 @@ void setup(){
   // Set 128 prescaler
   TCCR2B |= (1 << CS22) | (1 << CS20);
   // enable timer compare interrupt
-  TIMSK2 |= (1 << OCIE2A) | (1 << OCIE2B);
+  TIMSK2 |= (1 << OCIE2B) | (1 << OCIE2A);
 
+  pinMode(4, OUTPUT); digitalWrite(4, LOW);
   pinMode(18, INPUT_PULLUP);
   pinMode(19, OUTPUT); digitalWrite(19, LOW);
+  pinMode(20, OUTPUT); digitalWrite(20, LOW);
   pinMode(DRV1_EN, OUTPUT); digitalWrite(DRV1_EN, LOW);
 
   attachInterrupt(digitalPinToInterrupt(18), Start, FALLING);
 
+  stepperX.setPinsInverted(false, false, true);
   stepperX.setMaxSpeed(maxSPS);
-  stepperX.setSpeed(maxSPS);
-  stepperX.setAcceleration(maxSPS);
+  stepperX.setAcceleration(maxSPS * 100);
 
   Serial.begin(115200);
 
@@ -77,35 +85,73 @@ void setup(){
 }
 
 ISR(TIMER1_COMPA_vect){
-  // if(buttonPressed){
-  //   if(!moveUp && !Started){
-  //     stepperX.runSpeed();
-  //     moveUp = true;
-  //     moveUpLast = Millis();
-  //   }
-  //   else if(moveUp && !Started){
-  //     stepperX.runSpeed();
-  //     if(Millis() - moveUpLast >= 10){
-  //       stepperX.stop();
-  //       Started = true;
-  //       startCntDown = Millis();
-  //     }
-  //   }
+  if(buttonPressed){
+    timeout = false;
+    if(!moveUp && !Started){
+      moveUp = true;
+      moveUpLast = Millis();
+    }
+    else if(moveUp && !Started){
+      stepperX.setSpeed(maxSPS);
+      stepperX.runSpeed();
+      if(Millis() - moveUpLast >= 200){
+        Started = true;
+        startCntDown = Millis();
+        stepperX.setCurrentPosition(0);
+      }
+    }
 
-  //   if(Started){
-  //     if(Millis() - startCntDown >= 1000){
-  //       if(!changeDir){
-  //         stepperX.moveTo(movementGap * 15);
-  //         changeDir = true;
-  //       }
-  //       else if(changeDir && stepperX.distanceToGo() == 0){
-  //         stepperX.moveTo(0);
-  //       }
-  //       stepperX.run();
-  //     }
-  //   }
-  
-  // }
+    if(Started){
+      digitalWrite(19, HIGH);
+      if(Millis() - startCntDown >= 1000){
+        if(!changeDir){
+          stepperX.moveTo(movementGap * 15);
+          stepperX.setSpeed(maxSPS);
+          changeDir = true;
+        }
+        else if(changeDir && stepperX.distanceToGo() == 0){
+          stepperX.moveTo(0);
+          stepperX.setSpeed(maxSPS);
+          startCntDown = Millis();
+          ended = true;
+        }
+        stepperX.runSpeedToPosition();
+        // stepperX.run();
+        if(ended && stepperX.distanceToGo() == 0){
+          moveUp = false;
+          Started = false;
+          changeDir = false;
+          buttonPressed = false;
+          timeoutFlag = true;
+          timeout = Millis();
+
+          digitalWrite(4, LOW);
+          digitalWrite(19, LOW);
+        }
+      }
+    }
+  }
+  if(timeoutFlag){
+    if(Millis() - timeout >= 1000){
+      moveDown = true;
+      moveDownLast = Millis();
+      timeoutFlag = false;
+    }
+  }
+
+  if(moveDown){
+    stepperX.setSpeed(-maxSPS);
+    stepperX.runSpeed();
+    if(Millis() - moveDownLast >= 100){
+      moveDown = false;
+      timeoutFlag = false;
+      digitalWrite(DRV1_EN, LOW);
+      digitalWrite(20, LOW);
+    }
+  }
+  currPos = stepperX.currentPosition();
+  vel = stepperX.speed();
+  now = Millis();
 }
 
 ISR(TIMER2_COMPA_vect) {
@@ -113,22 +159,8 @@ ISR(TIMER2_COMPA_vect) {
 }
 
 ISR(TIMER2_COMPB_vect) {
-  // debug
   if(buttonPressed){
-    static volatile unsigned long now = Millis();
-
-    deltaDist = stepperX.distanceToGo();
-    currPos = stepperX.currentPosition();
-    vel = stepperX.speed();
-
-        Serial.print(currPos);
-        Serial.print(",");
-        Serial.print(vel);
-        Serial.print(",");
-        Serial.print(now);
-
-        Serial.print(",");
-        Serial.println(Started);
+    sendData = true;
   }
 }
 
@@ -137,44 +169,20 @@ unsigned long Millis(){
 }
 
 void loop(){
-  
-  // if(buttonPressed){
-  //   if(!moveUp && !Started){
-  //     stepperX.runSpeed();
-  //     moveUp = true;
-  //     moveUpLast = Millis();
-  //   }
-  //   else if(moveUp && !Started){
-  //     stepperX.runSpeed();
-  //     if(Millis() - moveUpLast >= 10){
-  //       stepperX.stop();
-  //       Started = true;
-  //       startCntDown = Millis();
-  //     }
-  //   }
-
-  //   if(Started){
-  //     if(Millis() - startCntDown >= 1000){
-  //       if(!changeDir){
-  //         stepperX.moveTo(movementGap * 15);
-  //         changeDir = true;
-  //       }
-  //       else if(changeDir && stepperX.distanceToGo() == 0){
-  //         stepperX.moveTo(0);
-  //       }
-  //       stepperX.run();
-  //     }
-  //   }
-  
-  // }
-  // stepperX.runSpeed();
+  if(sendData){
+    Serial.write((uint8_t*)&currPos, sizeof(currPos));
+    Serial.write((uint8_t*)&vel, sizeof(vel));
+    Serial.write((uint8_t*)&now, sizeof(now));
+    Serial.write(Started);
+    sendData = false;
+    last = Millis();
+  }
 }
 
 void Start(){
   if(digitalRead(18) == 0){
     buttonPressed = true;
-    digitalWrite(19, HIGH);
-
+    digitalWrite(20, HIGH);
     digitalWrite(DRV1_EN, HIGH);
   }
 }

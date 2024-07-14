@@ -9,6 +9,9 @@ AMS_5600 encoder;
 bool startFlag = false;
 
 volatile unsigned long now = 0;
+volatile unsigned long last = 0;
+volatile bool outputFlag = false;
+volatile bool startDebug = false;
 
 float mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
 {
@@ -22,8 +25,10 @@ float Angle(){
 }
 
 void output(long rawAngle){
-  String buffer = String(rawAngle) + "," + String(now) + "," + String(digitalRead(BUTTON));
-  Serial.println(buffer);
+  Serial.write((uint8_t*)&rawAngle, sizeof(rawAngle));
+  Serial.write((uint8_t*)&now, sizeof(now));
+  Serial.write(digitalRead(12));
+  Serial.write(digitalRead(BUTTON));
 }
 
 void setup() {
@@ -43,6 +48,7 @@ void setup() {
 
   pinMode(DIR_PIN, OUTPUT);
   pinMode(BUTTON, INPUT);
+  pinMode(12, INPUT);
   Serial.begin(115200);
   Wire.begin();
   Wire.setClock(400000);
@@ -52,10 +58,16 @@ void setup() {
 
 ISR(TIMER0_COMPA_vect){
   now++;
-  encoder.update();
-  output(encoder.getRawAngle());
+  startDebug = digitalRead(12);
+  if(startDebug){
+    outputFlag = true;
+  }
 }
 
 void loop() {
-
+  if(outputFlag){
+    outputFlag = false;
+    output(encoder.getRawAngle());
+    last = now;
+  }
 }

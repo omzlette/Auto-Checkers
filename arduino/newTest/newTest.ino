@@ -1,41 +1,53 @@
 #include <AccelStepper.h>
-#include <MultiStepper.h>
+#include <Wire.h>
+#include <AS5600.h>
 
-#define DRV1_EN 52
-#define DRV2_EN 53
+#define DRV1_EN 35
+#define DRV2_EN 37
 
-#define DRV1_DIR 2
-#define DRV1_STEP 3
-#define DRV2_DIR 4
-#define DRV2_STEP 5
+#define DRV1_DIR 4
+#define DRV1_STEP 5
+#define DRV2_DIR 6
+#define DRV2_STEP 7
+
+#define BUTTON_START 18
+#define BUTTON_FORWARD 19
+#define BUTTON_BACKWARD 3
+#define BUTTON_STOP 2
+
+#define DEBUG_ERROR 22
+#define DATA_FLAG 29
+#define START_MATCH_FLAG 30
 
 volatile unsigned long _millis = 0;
 volatile unsigned long moveUpLast = 0;
 volatile unsigned long moveDownLast = 0;
 volatile unsigned long startCntDown = 0;
-volatile unsigned long timeout = 0;
+volatile unsigned long endCntDown = 0;
 
 const float MICROSTEPS = 8;
 const float maxSPS = 5026.19; // max angular vel * steps per rev / 2PI
 
 const float movementGap = 888.51; // half a square == 25 mm -> (microstepsPerRev * half of square / pulleyRad * 2PI) usteps
 
-volatile unsigned long last = 0;
 volatile unsigned long now = 0;
 volatile long currPos = 0;
 volatile float vel = 0;
+volatile long rawAngle = 0;
+volatile int speedDir = 0;
 volatile bool Started = false;
 volatile bool moveUp = false;
 volatile bool moveDown = false;
-volatile bool changeDir = false;
 volatile bool buttonPressed = false;
+volatile bool forwardStarted = false;
+volatile bool backwardStarted = false;
 volatile bool ended = false;
 volatile bool sendData = false;
-volatile bool timeoutFlag = false;
+volatile bool cooldown = false;
 
 AccelStepper stepperX(1, DRV1_STEP, DRV1_DIR);
 AccelStepper stepperY(1, DRV2_STEP, DRV2_DIR);
-MultiStepper steppers;
+AMS_5600 encoder;
 
 unsigned long Millis();
 
@@ -65,100 +77,101 @@ void setup(){
   // Set 128 prescaler
   TCCR2B |= (1 << CS22) | (1 << CS20);
   // enable timer compare interrupt
-  TIMSK2 |= (1 << OCIE2B) | (1 << OCIE2A);
+  TIMSK2 |= (1 << OCIE2A);
 
-  pinMode(4, OUTPUT); digitalWrite(4, LOW);
-  pinMode(18, INPUT_PULLUP);
-  pinMode(19, OUTPUT); digitalWrite(19, LOW);
-  pinMode(20, OUTPUT); digitalWrite(20, LOW);
+  pinMode(BUTTON_START, INPUT_PULLUP);
+  pinMode(BUTTON_FORWARD, INPUT_PULLUP);
+  pinMode(BUTTON_BACKWARD, INPUT_PULLUP);
+  pinMode(BUTTON_STOP, INPUT_PULLUP);
+  pinMode(START_MATCH_FLAG, OUTPUT); digitalWrite(START_MATCH_FLAG, LOW);
+  pinMode(DATA_FLAG, OUTPUT); digitalWrite(DATA_FLAG, LOW);
   pinMode(DRV1_EN, OUTPUT); digitalWrite(DRV1_EN, LOW);
 
-  attachInterrupt(digitalPinToInterrupt(18), Start, FALLING);
+  pinMode(DEBUG_ERROR, OUTPUT); digitalWrite(DEBUG_ERROR, LOW);
+
+  attachInterrupt(digitalPinToInterrupt(BUTTON_START), Start, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_FORWARD), Forward, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_BACKWARD), Backward, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_STOP), Stop, FALLING);
 
   stepperX.setPinsInverted(false, false, true);
   stepperX.setMaxSpeed(maxSPS);
   stepperX.setAcceleration(maxSPS * 100);
 
-  Serial.begin(115200);
+  Serial.begin(115220);
+  Wire.begin();
+  Wire.setClock(400000);
 
   sei();
 }
 
 ISR(TIMER1_COMPA_vect){
-  if(buttonPressed){
-    timeout = false;
-    if(!moveUp && !Started){
-      moveUp = true;
-      moveUpLast = Millis();
-    }
-    else if(moveUp && !Started){
-      stepperX.setSpeed(maxSPS);
-      stepperX.runSpeed();
-      if(Millis() - moveUpLast >= 200){
-        Started = true;
-        startCntDown = Millis();
-        stepperX.setCurrentPosition(0);
-      }
-    }
-
-    if(Started){
-      digitalWrite(19, HIGH);
-      if(Millis() - startCntDown >= 1000){
-        if(!changeDir){
-          stepperX.moveTo(movementGap * 15);
-          stepperX.setSpeed(maxSPS);
-          changeDir = true;
-        }
-        else if(changeDir && stepperX.distanceToGo() == 0){
-          stepperX.moveTo(0);
-          stepperX.setSpeed(maxSPS);
-          startCntDown = Millis();
-          ended = true;
-        }
-        stepperX.runSpeedToPosition();
-        // stepperX.run();
-        if(ended && stepperX.distanceToGo() == 0){
-          moveUp = false;
-          Started = false;
-          changeDir = false;
-          buttonPressed = false;
-          timeoutFlag = true;
-          timeout = Millis();
-
-          digitalWrite(4, LOW);
-          digitalWrite(19, LOW);
-        }
-      }
+  if(moveUp && !Started){
+    stepperX.setSpeed(maxSPS);
+    stepperX.runSpeed();
+    // run1 = true;
+    if(Millis() - moveUpLast >= 220){
+      Started = true;
+      moveUp = false;
+      startCntDown = Millis();
+      stepperX.setCurrentPosition(0);
     }
   }
-  if(timeoutFlag){
-    if(Millis() - timeout >= 1000){
-      moveDown = true;
-      moveDownLast = Millis();
-      timeoutFlag = false;
+
+  if(Started){
+    if(Millis() - startCntDown >= 500){
+      digitalWrite(START_MATCH_FLAG, HIGH);
+    }
+    if(Millis() - startCntDown >= 1000){
+      if(forwardStarted){
+        stepperX.moveTo(movementGap * 15);
+        speedDir = 1;
+        forwardStarted = false;
+      }
+      else if(!forwardStarted && stepperX.distanceToGo() == 0){
+        speedDir = 0;
+        if(backwardStarted){
+          stepperX.moveTo(0);
+          speedDir = -1;
+          backwardStarted = false;
+          ended = true;
+        }
+      }
+      
+      if(ended && stepperX.distanceToGo() == 0){
+        speedDir = 0;
+        ended = false;
+        cooldown = true;
+        endCntDown = Millis();
+      }
+      stepperX.setSpeed(speedDir * maxSPS);
+      stepperX.runSpeedToPosition();
+      // run2 = true;
+
+      if(cooldown && Millis() - endCntDown >= 500){
+        digitalWrite(START_MATCH_FLAG, LOW);
+        Started = false;
+        cooldown = false;
+      }
     }
   }
 
   if(moveDown){
     stepperX.setSpeed(-maxSPS);
     stepperX.runSpeed();
-    if(Millis() - moveDownLast >= 100){
+    // run1 = true;
+    if(Millis() - moveDownLast >= 220){
+      buttonPressed = false;
       moveDown = false;
-      timeoutFlag = false;
+      ended = false;
       digitalWrite(DRV1_EN, LOW);
-      digitalWrite(20, LOW);
+      digitalWrite(DATA_FLAG, LOW);
     }
   }
-  currPos = stepperX.currentPosition();
-  vel = stepperX.speed();
-  now = Millis();
 }
 
 ISR(TIMER2_COMPA_vect) {
   _millis++;
-}
-
-ISR(TIMER2_COMPB_vect) {
   if(buttonPressed){
     sendData = true;
   }
@@ -170,19 +183,53 @@ unsigned long Millis(){
 
 void loop(){
   if(sendData){
+    currPos = stepperX.currentPosition();
+    vel = stepperX.speed();
+    rawAngle = encoder.getRawAngle();
+    now = Millis();
     Serial.write((uint8_t*)&currPos, sizeof(currPos));
     Serial.write((uint8_t*)&vel, sizeof(vel));
+    Serial.write((uint8_t*)&rawAngle, sizeof(rawAngle));
     Serial.write((uint8_t*)&now, sizeof(now));
-    Serial.write(Started);
     sendData = false;
-    last = Millis();
   }
+
+  // if(run1){
+  //   stepperX.runSpeed();
+  //   run1 = false;
+  // }
+
+  // if(run2){
+  //   stepperX.runSpeedToPosition();
+  //   run2 = false;
+  // }
 }
 
 void Start(){
-  if(digitalRead(18) == 0){
+  if(digitalRead(BUTTON_START) == 0){
     buttonPressed = true;
-    digitalWrite(20, HIGH);
+    moveUp = true;
+    moveUpLast = Millis();
+    digitalWrite(DATA_FLAG, HIGH);
     digitalWrite(DRV1_EN, HIGH);
+  }
+}
+
+void Forward(){
+  if(digitalRead(BUTTON_FORWARD) == 0){
+    forwardStarted = true;
+  }
+}
+
+void Backward(){
+  if(digitalRead(BUTTON_BACKWARD) == 0){
+    backwardStarted = true;
+  }
+}
+
+void Stop(){
+  if(digitalRead(BUTTON_STOP) == 0){
+    moveDown = true;
+    moveDownLast = Millis();
   }
 }

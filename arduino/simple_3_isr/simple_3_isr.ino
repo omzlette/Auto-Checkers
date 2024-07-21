@@ -1,10 +1,12 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 
-#define DRV1_EN 52
+#define DRV1_EN 7
 
-#define DRV1_DIR 2
-#define DRV1_STEP 3
+#define DRV1_DIR 5
+#define DRV1_STEP 6
+
+#define BUTTON 2
 
 const float maxSPS = 5026.19;
 const float movementGap = 888.51;
@@ -21,7 +23,7 @@ void setup() {
   TCCR1B = 0; // same for TCCR1B
   TCNT1  = 0; // initialize counter value to 0
   // set compare match register for 10khz increments
-  OCR1A = 1599; // = (16*10^6) / (1*10^4) - 1 (must be <65536)
+  OCR1A = 159; // = (16*10^6) / (1*10^4) - 1 (must be <65536)
   // turn on CTC mode
   TCCR1B |= (1 << WGM12);
   // Set CS12, CS11 and CS10 bits for 1 prescaler
@@ -42,12 +44,19 @@ void setup() {
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2B) | (1 << OCIE2A);
 
-  pinMode(DRV1_EN, OUTPUT); digitalWrite(DRV1_EN, HIGH);
-  pinMode(4, OUTPUT); digitalWrite(4, LOW);
-  pinMode(19, OUTPUT); digitalWrite(19, LOW);
+  // pinMode(DRV1_EN, OUTPUT); digitalWrite(DRV1_EN, LOW);
+  pinMode(BUTTON, INPUT_PULLUP);
+  pinMode(22, OUTPUT); digitalWrite(22, LOW);
+  pinMode(23, OUTPUT); digitalWrite(23, LOW);
 
-  stepperX.setMaxSpeed(maxSPS);
-  stepperX.setAcceleration(maxSPS);
+  attachInterrupt(digitalPinToInterrupt(BUTTON), [](){
+    if(digitalRead(BUTTON) == LOW){
+      digitalWrite(23, !digitalRead(23));
+    }
+  }, FALLING);
+
+  // stepperX.setMaxSpeed(maxSPS);
+  // stepperX.setAcceleration(maxSPS);
   
   // Serial.begin(115200);
   sei();
@@ -56,24 +65,24 @@ void setup() {
 ISR(TIMER1_COMPA_vect){
   // stepperX.setSpeed(maxSPS);
   // stepperX.runSpeed();
-  stepperX.moveTo(movementGap * 15);
-  stepperX.run();
+  // stepperX.moveTo(movementGap * 15);
+  // stepperX.run();
 }
 
 ISR(TIMER2_COMPA_vect){
   blinkTimer++;
   if(blinkTimer % 100 == 0){
-    digitalWrite(4, !digitalRead(4));
+    digitalWrite(22, !digitalRead(22));
     // Serial.println(blinkTimer);
   }
 }
 
 ISR(TIMER2_COMPB_vect){
-  blinkTimer2++;
-  if(blinkTimer2 % 100 == 0){
-    digitalWrite(19, !digitalRead(19));
-    // Serial.println(blinkTimer);
-  }
+//   blinkTimer2++;
+//   if(blinkTimer2 % 100 == 0){
+//     digitalWrite(23, !digitalRead(23));
+//     // Serial.println(blinkTimer);
+//   }
 }
 
 void loop() {

@@ -1,73 +1,91 @@
-#include <Wire.h>
-#include <AS5600.h>
+// #include <Wire.h>
+// #include <AS5600.h>
 
-#define DIR_PIN 2
-#define BUTTON 13
+// #define DIR_PIN 2
+// #define BUTTON 13
 
-AMS_5600 encoder;
+// #define DEBUG_ERROR 8
 
-bool startFlag = false;
+// AMS_5600 encoder;
 
-volatile unsigned long now = 0;
-volatile unsigned long last = 0;
-volatile bool outputFlag = false;
-volatile bool startDebug = false;
+// bool startFlag = false;
 
-float mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
+// volatile unsigned long now = 0;
+// volatile unsigned long last = 0;
+// volatile bool outputFlag = false;
+// volatile bool startDebug = false;
+
+// void output(long rawAngle){
+//   Serial.write((uint8_t*)&rawAngle, sizeof(rawAngle));
+//   Serial.write((uint8_t*)&now, sizeof(now));
+//   Serial.write(digitalRead(12)); // START MATCH 30
+//   Serial.write(digitalRead(BUTTON)); // BUTTON 29
+// }
+
+// void setup() {
+//   cli();
+//   //set timer0 interrupt at 1kHz
+//   TCCR2A = 0;// set entire TCCR0A register to 0
+//   TCCR2B = 0;// same for TCCR0B
+//   TCNT2  = 0;//initialize counter value to 0
+//   // set compare match register for 1khz increments
+//   OCR2A = 249;// = (16*10^6) / (1000*64) - 1 (must be <256)
+//   // turn on CTC mode
+//   TCCR2A |= (1 << WGM21);
+//   // TCCR0B |= (1 << CS01) | (1 << CS00);   
+//   TCCR2B |= (1 << CS22);
+//   // enable timer compare interrupt
+//   TIMSK2 |= (1 << OCIE2A);
+
+//   pinMode(DIR_PIN, OUTPUT);
+//   pinMode(BUTTON, INPUT);
+//   pinMode(12, INPUT);
+  
+//   pinMode(DEBUG_ERROR, OUTPUT);
+
+//   Serial.begin(115200);
+//   Wire.begin();
+//   Wire.setClock(400000);
+
+//   sei();
+// }
+
+// ISR(TIMER2_COMPA_vect){
+//   now++;
+//   if(digitalRead(BUTTON)){
+//     outputFlag = true;
+//   }
+//   digitalWrite(DEBUG_ERROR, digitalRead(BUTTON));
+// }
+
+// void loop(){
+//   if(outputFlag){
+//     outputFlag = false;
+//     output(encoder.getRawAngle());
+//   }
+// }
+
+#include<Wire.h>
+void setup() 
 {
-  return (float)(x - in_min) * (out_max - out_min) / (float)(in_max - in_min) + out_min;
-}
-
-float Angle(){
-  long in;
-  in = mapfloat(encoder.getRawAngle(), 0, 4095, 0, 360);
-  return in;
-}
-
-void output(long rawAngle){
-  Serial.write((uint8_t*)&rawAngle, sizeof(rawAngle));
-  Serial.write((uint8_t*)&now, sizeof(now));
-  Serial.write(digitalRead(12));
-  Serial.write(digitalRead(BUTTON));
-}
-
-void setup() {
-  cli();
-  //set timer0 interrupt at 1kHz
-  TCCR0A = 0;// set entire TCCR0A register to 0
-  TCCR0B = 0;// same for TCCR0B
-  TCNT0  = 0;//initialize counter value to 0
-  // set compare match register for 1khz increments
-  OCR0A = 249;// = (16*10^6) / (1000*64) - 1 (must be <256)
-  // turn on CTC mode
-  TCCR0A |= (1 << WGM01);
-  // Set CS01 and CS00 bits for 64 prescaler
-  TCCR0B |= (1 << CS01) | (1 << CS00);   
-  // enable timer compare interrupt
-  TIMSK0 |= (1 << OCIE0A);
-
-  pinMode(DIR_PIN, OUTPUT);
-  pinMode(BUTTON, INPUT);
-  pinMode(12, INPUT);
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(400000);
 
-  sei();
+  TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN); //interrupt bit clear, TWI Bus is enabled, assert START
+  while(!(TWCR & (1<<TWINT)))  //wait until the process is complete 
+  {
+    ;
+  }
+
+  if((TWSR & 0xF8) != 0x08)  //check that status word 0x08 has been generated due to START condition
+  {
+    Serial.print("Internal Bus Error!");
+    while(1);
+  }
+  Serial.println("The codes have generated START condition."); 
 }
 
-ISR(TIMER0_COMPA_vect){
-  now++;
-  startDebug = digitalRead(12);
-  if(startDebug){
-    outputFlag = true;
-  }
-}
+void loop() 
+{
 
-void loop() {
-  if(outputFlag){
-    outputFlag = false;
-    output(encoder.getRawAngle());
-    last = now;
-  }
 }

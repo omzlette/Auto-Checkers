@@ -1,6 +1,7 @@
 {
-    "board": "arduino:avr:uno",
-    "port": "COM4",
+    "board": "arduino:avr:mega",
+    "port": "COM5",
     "programmer": "arduinoisp",
-    "sketch": "arduino\\encoder-experiment\\encoder-experiment.ino"
+    "sketch": "arduino\\newTest\\newTest.ino",
+    "configuration": "cpu=atmega2560"
 }

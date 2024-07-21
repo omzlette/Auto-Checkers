@@ -2,13 +2,13 @@
 #include <MultiStepper.h>
 #include <CD74HC4067.h>
 // Define PINS
-#define DRV1_EN 52
-#define DRV2_EN 53
+#define DRV1_EN 35
+#define DRV2_EN 37
 
-#define DRV1_DIR 2
-#define DRV1_STEP 3
-#define DRV2_DIR 4
-#define DRV2_STEP 5
+#define DRV1_DIR 4
+#define DRV1_STEP 5
+#define DRV2_DIR 6
+#define DRV2_STEP 7
 
 #define SOLENOID_VALVE 38
 
@@ -20,9 +20,6 @@
 #define MUX2_SIG A1
 #define MUX_THRESHOLD 530 // From expermient
 
-#define HALF_OF_SQUARES 16
-#define SQUARES 32
-
 #define LED1_ONOFF 22 // On/Off
 #define LED2_START 23 // Start
 #define LED3_SETHOME 24 // Set Home
@@ -31,16 +28,17 @@
 #define LED6_ERROR 27 // Error
 #define LED7_BTURN 28 // Black Turn, win = blink
 #define LED8_WTURN 29 // White Turn, win = blink
-#define LED9 30
-#define LED10_DRAW 31 // Draw
+#define LED9_DRAW 30 // Draw
 
-#define LIMIT_SWITCH1 34
-#define LIMIT_SWITCH2 36
+#define LIMIT_SWITCH1 2
+#define LIMIT_SWITCH2 3
 #define START_BUTTON 18
 #define STOP_BUTTON 19
 #define RESET_BUTTON 20
 #define SETHOME_BUTTON 21
 
+#define HALF_OF_SQUARES 16
+#define SQUARES 32
 #define MAX_BUFFER_LENGTH 32
 
 // Declare Variables
@@ -70,6 +68,8 @@ const float movementGap = 888.51; // half a square == 25 mm -> (microstepsPerRev
 
 volatile long desiredPos[2] = {0, 0};
 volatile int posIDX = 0;
+volatile long prevPos[2] = {0, 0};
+volatile int motorDirection[2] = {1, 1};
 volatile bool toDesignatedPos = false;
 volatile bool reachedDesignatedPos = false;
 volatile bool triggerSolenoid = false;
@@ -319,6 +319,9 @@ ISR(TIMER1_COMPA_vect) {
           // set the desired position one by one
           stepperX.moveTo(desiredPos[0]);
           stepperY.moveTo(desiredPos[1]);
+
+          stepperX.setSpeed(maxSPS * motorDirection[0]);
+          stepperY.setSpeed(maxSPS * motorDirection[1]);
         }
 
         if(stepperX.distanceToGo() == 0 && stepperY.distanceToGo() == 0 && toDesignatedPos){
@@ -331,7 +334,7 @@ ISR(TIMER1_COMPA_vect) {
           }
         }
 
-        steppers.run();
+        steppers.runSpeedToPosition();
         break;
     }
   }
@@ -339,10 +342,6 @@ ISR(TIMER1_COMPA_vect) {
 
 ISR(TIMER2_COMPA_vect) {
   _millis++;
-  if (_millis % 1000 == 0){
-    // 1 second
-    digitalWrite(LED9, !digitalRead(LED9));
-  }
 }
 
 ISR(TIMER2_COMPB_vect) {
@@ -351,7 +350,7 @@ ISR(TIMER2_COMPB_vect) {
   */
   _LEDBlink++;
 
-  digitalWrite(LED10_DRAW, drawStatus);
+  digitalWrite(LED9_DRAW, drawStatus);
   digitalWrite(LED7_BTURN, blackTurnStatus);
   digitalWrite(LED8_WTURN, whiteTurnStatus);
   digitalWrite(LED6_ERROR, errorStatus);
@@ -418,8 +417,7 @@ void initialize(){
   pinMode(LED6_ERROR, OUTPUT); digitalWrite(LED6_ERROR, LOW);
   pinMode(LED7_BTURN, OUTPUT); digitalWrite(LED7_BTURN, LOW);
   pinMode(LED8_WTURN, OUTPUT); digitalWrite(LED8_WTURN, LOW);
-  pinMode(LED9, OUTPUT); digitalWrite(LED9, LOW);
-  pinMode(LED10_DRAW, OUTPUT); digitalWrite(LED10_DRAW, LOW);
+  pinMode(LED9_DRAW, OUTPUT); digitalWrite(LED9_DRAW, LOW);
 }
 
 void setupStepper(){
@@ -492,8 +490,20 @@ void movementMapping(const char x, const char y){
   /*
   Move the stepper motors to the designated position
   */
+  prevPos[0] = desiredPos[0];
+  prevPos[1] = desiredPos[1];
+
   desiredPos[0] = x * movementGap;
   desiredPos[1] = y * movementGap;
+
+  for(int i = 0; i < 2; i++){
+    if(desiredPos[i] > prevPos[i]){
+      motorDirection[i] = 1;
+    }
+    else if(desiredPos[i] < prevPos[i]){
+      motorDirection[i] = -1;
+    }
+  }
 
   toDesignatedPos = true;
   reachedDesignatedPos = false;

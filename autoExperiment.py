@@ -179,15 +179,24 @@ def update_board_state(prevBoard, currBoard, turn):
     return updated_board, capturedPiece
 
 def getMultipleCapture(prevBoard, newBoard, turn, captured):
-    selected, move, _ = getMove(prevBoard, newBoard, turn)
+    selected, _, _ = getMove(prevBoard, newBoard, turn)
     selectedList = [selected]
     moves = []
+    distDiff = []
+    reverseFlag = False
     
-    deltaRow = move[0] - selected[0]
-    deltaCol = move[1] - selected[1]
-    if deltaRow < 0 or deltaCol < 0:
+    for row, col in captured:
+        rowDelta = abs(row - selected[0])
+        colDelta = abs(col - selected[1])
+
+        distDiff.append((rowDelta, colDelta))
+    
+    if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
+        reverseFlag = True
+
+    if reverseFlag:
         captured = captured[::-1]
-    
+
     for row, col in captured:
         rowDelta = row - selected[0]
         rowDelta = rowDelta // abs(rowDelta)
@@ -218,6 +227,7 @@ def initGame():
 
 def main():
     numGames = 0
+    MAXGAMES = 20
     startedFlag = False
 
     jetson = serial.Serial(
@@ -225,7 +235,8 @@ def main():
         baudrate=115200,
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE)
+        stopbits=serial.STOPBITS_ONE,
+        timeout=None)
 
     TxBuffer = "~/miniforge3/envs/checkers/bin/python ~/Auto-Checkers/main-copy.py\r"
     print(f"Sending: {TxBuffer.strip()}")
@@ -236,14 +247,14 @@ def main():
     jetson.reset_output_buffer()
     clear = lambda: os.system('cls')
 
-    while numGames < 50:
+    while numGames < MAXGAMES:
         if startedFlag == False:
             print("Game started")
             startedFlag = True
             turn, prevBoard, bot, our = initGame()
             time.sleep(3)
 
-        # time.sleep(5)
+        time.sleep(3)
         screen = ImageGrab.grab(all_screens=True)
 
         # screen = screen.crop((1920, 0, 3840, 1080))
@@ -268,22 +279,23 @@ def main():
                 selected, move, _ = getMove(prevBoard, currBoard, turn)
 
                 if selected is not None and move is not None:                    
-                    print('1.Current board:')
-                    for row in currBoard:
-                        print(row)
-                    print('1. Previous board:')
-                    for row in prevBoard:
-                        print(row)
+                    # print('1.Current board:')
+                    # for row in currBoard:
+                    #     print(row)
+                    # print('1. Previous board:')
+                    # for row in prevBoard:
+                    #     print(row)
 
                     _, capturedPiece = update_board_state(prevBoard, currBoard, turn)
                     # send the move
                     if len(capturedPiece) < 2:
                         TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
-                        print(f'Sent: {TxBuffer.strip()}')
                         time.sleep(0.5)
+                        print(f'Sent: {TxBuffer.strip()}')
                         jetson.write(TxBuffer.encode('utf-8'))
 
                         response = jetson.readline().decode('utf-8').strip()
+                        # response = jetson.read_all().decode('utf-8').strip()
                         print(f'Received: {response}')
                         if 'ACK' in response:
                             print("Move sent successfully")
@@ -299,32 +311,35 @@ def main():
                         currBoard, _ = getBoardState(screen_binary, corners)
                         selectedList, moves = getMultipleCapture(prevBoard, currBoard, turn, capturedPiece)
                         countNum = 0
-                        print('Multiple capture detected')
-                        print('2. Current board:')
-                        for row in currBoard:
-                            print(row)
-                        print('2. Previous board:')
-                        for row in prevBoard:
-                            print(row)
+                        # print('Multiple capture detected')
+                        # print('2. Current board:')
+                        # for row in currBoard:
+                        #     print(row)
+                        # print('2. Previous board:')
+                        # for row in prevBoard:
+                        #     print(row)
                         while countNum < len(selectedList):
                             print(f'Sending move {countNum + 1} of {len(selectedList)}')
                             print(f'Selected: {selectedList[countNum]}, Move: {moves[countNum]}')
                             # with open('debug-board.txt', 'a') as f:
                             #     f.write(f'{selectedList[countNum]}, {moves[countNum]}\n')
-                            time.sleep(0.1)
                             selected, move = selectedList[countNum], moves[countNum]
                             TxBuffer = f'm{selected[0]};{selected[1]},{move[0]};{move[1]}\n'
+                            time.sleep(0.5)
                             print(f'Sent: {TxBuffer.strip()}')
                             jetson.write(TxBuffer.encode('utf-8'))
                             
                             response = jetson.readline().decode('utf-8').strip()
                             print(f'Received: {response}')
                             if 'ACK' in response:
-                                print("Move sent successfully")
                                 countNum += 1
+                                print("Move sent successfully")
+                                if countNum == len(selectedList) and response == 'bACK':
+                                    countNum = 0
                             else:
                                 print("Move not sent")
                                 break
+                            time.sleep(1)
                         
                         if countNum >= len(selectedList):
                             # update the board state
@@ -341,6 +356,8 @@ def main():
                 # get selection and move
                 if jetson.in_waiting > 0:
                     RxBuffer = jetson.readline().decode('utf-8').strip()
+                    # RxBuffer = jetson.read_all().decode('utf-8').strip()
+                    print(f'Received: {RxBuffer}')
                     if RxBuffer and 'm' in RxBuffer:
                         print(f'Received: {RxBuffer}')
                         RxBuffer = RxBuffer.replace('m', '')
@@ -390,29 +407,65 @@ def main():
             print("Checkers board not detected, checking game end...")
             # check game end
             endimg = cv.imread('end.png')
-            matchinfo = match_images(screen, endimg)
-            loc, w, h = matchinfo
-            if loc[0].size > 0:
+            askmelater = cv.imread('askmelater.png')
+            win = cv.imread('result-win.png')
+            lose = cv.imread('result-lose.png')
+            matchinfo1 = match_images(screen, endimg)
+            matchinfo2 = match_images(screen, askmelater)
+            loc1, _, _ = matchinfo1
+            loc2, _, _ = matchinfo2
+            if loc1[0].size > 0:
                 print("Game ended")
-                for pt in zip(*loc[::-1]):
-                    cv.rectangle(screen, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
-        
+                
+                matchwin = match_images(screen, win)
+                matchlose = match_images(screen, lose)
+                locwin, _, _ = matchwin
+                loclose, _, _ = matchlose
                 # reset the board
-                pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
-                pyautogui.click()
-                time.sleep(0.5)
-                pyautogui.moveTo(loc[1][-1] + 320, loc[0][-1] - 220)
-                pyautogui.click()
-                time.sleep(0.5)
-                pyautogui.moveTo(loc[1][-1] + 200, loc[0][-1] + 310)
-                pyautogui.click()
-                jetson.write('next\n'.encode('utf-8'))
+                if locwin[0].size > 0:
+                    print("Game won")
+                    jetson.write(f'nextw\n'.encode('utf-8'))
+                elif loclose[0].size > 0:
+                    print("Game lost")
+                    jetson.write(f'nextb\n'.encode('utf-8'))
+                else:
+                    print("Game draw")
+                    jetson.write(f'nextdraw\n'.encode('utf-8'))
+
+                if numGames < MAXGAMES - 1:
+                    pyautogui.moveTo(loc1[1][-1] + 200, loc1[0][-1] + 310)
+                    pyautogui.click()
+                    time.sleep(0.5)
+                    pyautogui.moveTo(loc1[1][-1] + 320, loc1[0][-1] - 220)
+                    pyautogui.click()
+                    time.sleep(0.5)
+                    pyautogui.moveTo(loc1[1][-1] + 200, loc1[0][-1] + 310)
+                    pyautogui.click()
+                else:
+                    pyautogui.moveTo(loc1[1][-1], loc1[0][-1] + 310)
+                    pyautogui.click()
+                    time.sleep(2)
+                    pyautogui.moveTo(loc1[1][-1], loc1[0][-1] + 210)
+                    pyautogui.click()
+                    time.sleep(2)
+                    pyautogui.moveTo(loc1[1][-1] + 200, loc1[0][-1] + 100)
+                    pyautogui.click()
+                    time.sleep(2)
+                    pyautogui.moveTo(loc1[1][-1] + 200, loc1[0][-1] + 400)
+                    pyautogui.click()
+                    time.sleep(2)
+                    jetson.close()
+                    main()
+                
                 numGames += 1
                 startedFlag = False
+            elif loc2[0].size > 0:
+                pyautogui.moveTo(loc2[1][-1] + 10, loc2[0][-1] + 10)
+                pyautogui.click()
 
             else:
                 print("Game not ended")
-    time.sleep(2.5)
+    # time.sleep(2.5)
         # show screen
         # cv.imshow('screen', screen)
     #     cv.imshow('screen_binary', screen_binary)

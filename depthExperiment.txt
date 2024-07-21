@@ -46,9 +46,16 @@ Depth: 8, Last Depth: 7, Val: 23, Piece: (1, 0), Move: [0, 1]
 Depth: 7, Last Depth: 6, Val: 63, Piece: (0, 1), Move: [1, 0]
 Depth: 7, Last Depth: 6, Val: 163, Piece: (6, 5), Move: [4, 3]
 Depth: 3, Last Depth: 3, Val: 2363, Piece: (6, 1), Move: [4, 3]
+<<<<<<< HEAD
 Depth: 7, Last Depth: 6, Val: 373, Piece: (4, 3), Move: [6, 1]
 Depth: 7, Last Depth: 6, Val: 373, Piece: (4, 3), Move: [6, 1]
 Depth: 5, Last Depth: 5, Val: 2473, Piece: (4, 7), Move: [0, 3]
 Depth: 3, Last Depth: 3, Val: 2573, Piece: (7, 2), Move: [5, 4]
 Depth: 3, Last Depth: 3, Val: 2923, Piece: (6, 3), Move: [4, 5]
 Depth: 1, Last Depth: 1, Val: 2923, Piece: (6, 5), Move: [4, 7]
+=======
+Depth: 9, Last Depth: 8, Val: -2867, Piece: (4, 7), Move: [3, 6]
+Depth: 9, Last Depth: 8, Val: -2327, Piece: (7, 4), Move: [6, 5]
+Depth: 9, Last Depth: 8, Val: -247, Piece: (6, 5), Move: [5, 6]
+Depth: 10, Last Depth: 9, Val: -2247, Piece: (7, 0), Move: [6, 1]
+>>>>>>> a608e634a27dbdf65e030d9622ef8ccb597a9cfe

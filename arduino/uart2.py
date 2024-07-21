@@ -2,8 +2,7 @@ import serial
 import struct
 
 ser = serial.Serial('COM4', 115200)
-
-logEncoder = open('logEncoder.txt', 'w', 1)
+logEncoder = open('logEncoder_NOLOAD.txt', 'w', 1)
 logEncoder.write('Raw Angle, Time, Match Flag, Started\n')
 
 while True:

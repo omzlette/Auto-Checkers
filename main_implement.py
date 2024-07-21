@@ -1,5 +1,3 @@
-import pygame
-from pygame.locals import *
 from checkers import *
 from player import *
 from pathfinding import *

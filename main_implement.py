@@ -49,7 +49,20 @@ def get_move(prevBoard, newBoard):
     if capturedList:
         selectedList = [pieceFrom]
         moves = []
+        distDiff = []
+        reverseFlag = False
         
+        for row, col in capturedList:
+            rowDelta = abs(row - pieceFrom[0])
+            colDelta = abs(col - pieceFrom[1])
+            distDiff.append((rowDelta, colDelta))
+        
+        if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
+            reverseFlag = True
+
+        if reverseFlag:
+            capturedList = capturedList[::-1]
+
         for row, col in capturedList:
             rowDelta = row - pieceFrom[0]
             rowDelta = rowDelta // abs(rowDelta)
@@ -168,7 +181,7 @@ def main():
                                     # receive board data from MCU
                                     del RxBuffer
                                     data = ser.read_until(DELIMITER)
-                                    BPieces, BMoves, BCaptures = checkLegalMove(board.board, data)
+                                    BPieces, BMoves, BCaptures = get_move(board.board, data)
                                     ser.write(ACK)
                                     ser.write(DELIMITER)
                                     legalMove = checkLegalMove(BPieces, BMoves, BCaptures)

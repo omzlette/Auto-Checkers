@@ -121,7 +121,6 @@ def main():
             except:
                 print('Waiting for MCU...')
                 time.sleep(1)
-                continue
 
         else:
             if not startFlag:

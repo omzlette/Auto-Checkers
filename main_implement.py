@@ -301,3 +301,6 @@ def main():
                             running = False
                             startFlag = False
                             break
+
+if __name__ == '__main__':
+    main()

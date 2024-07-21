@@ -27,10 +27,9 @@ def main():
     # player1, player2, board = initGame(numGames)
     board = Checkers()
     player1 = User('b', board.board, board.movesDone)
-    # player2 = AlphaBeta('w', board.board, board.movesDone)
+    player2 = AlphaBeta('w', board.board, board.movesDone)
 
-    # player1 = User('b', board.board, board.movesDone)
-    player2 = User('w', board.board, board.movesDone)
+    # player2 = User('w', board.board, board.movesDone)
     # player2 = Minimax('w', board.board, board.movesDone)
     isGameOver = False
     running = True
@@ -38,7 +37,7 @@ def main():
     while running:
         if board.turn == player1.ourTurn:
             isGameOver = is_game_over(board.board, board.movesDone, player1.mandatory_moves)
-        elif board.turn == player2.ourTurn:
+        elif board.turn == player2.botTurn:
             isGameOver = is_game_over(board.board, board.movesDone, player2.mandatory_moves)
 
         board.screen.fill(BROWN)
@@ -57,7 +56,10 @@ def main():
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             row, col = player1.get_mouse_pos()
                             BMove = row, col
+                            prevTurn = board.turn
                             board.board, board.turn, BPiece = player1.handle_mouse_click(row, col, board.board)
+                            if board.board != board.prevBoard:
+                                board.updateMovesDict(tuple(BPiece), tuple(BMove), prevTurn)
                             player1.turn = board.turn
                             player2.turn = board.turn
 
@@ -65,6 +67,7 @@ def main():
                     BPiece, BMove = player1.play(board.board)
                     if BPiece is not None and BMove is not None:
                         player1.prevCount = countBlack(board.board) + countWhite(board.board)
+                        board.updateMovesDict(tuple(BPiece), tuple(BMove), board.turn)
                         board.board, board.turn = player1.update_board(board.board, BPiece, BMove)
                         player1.turn = board.turn
                         player2.turn = board.turn
@@ -78,7 +81,10 @@ def main():
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             row, col = player2.get_mouse_pos()
                             WMove = row, col
+                            prevTurn = board.turn
                             board.board, board.turn, WPiece = player2.handle_mouse_click(row, col, board.board)
+                            if board.board != board.prevBoard:
+                                board.updateMovesDict(tuple(WPiece), tuple(WMove), prevTurn)
                             player1.turn = board.turn
                             player2.turn = board.turn
 
@@ -86,6 +92,7 @@ def main():
                     WPiece, WMove = player2.play(board.board)
                     if WPiece is not None and WMove is not None:
                         player2.prevCount = countBlack(board.board) + countWhite(board.board)
+                        board.updateMovesDict(tuple(WPiece), tuple(WMove), board.turn)
                         board.board, board.turn, _ = player2.update_board(board.board, WPiece, WMove)
                         player1.turn = board.turn
                         player2.turn = board.turn
@@ -93,10 +100,6 @@ def main():
             if board.board != board.prevBoard:
                 nummoves += 1
                 board.prevBoard = copy.deepcopy(board.board)
-                if board.turn == 'w':
-                    board.updateMovesDict(tuple(BPiece), tuple(BMove), 'b')
-                else:
-                    board.updateMovesDict(tuple(WPiece), tuple(WMove), 'w')
                 with open('debug.txt', 'a') as f:
                     f.write(f'Game {numGames}: {isGameOver}, No. moves: {nummoves}\n')
                     f.write(f'Moves Done: {board.movesDone}\n\n')

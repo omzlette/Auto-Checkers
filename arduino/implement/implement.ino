@@ -41,7 +41,40 @@
 #define SQUARES 32
 #define MAX_BUFFER_LENGTH 32
 
+#define DEMO 1
+
 // Declare Variables
+#if DEMO == 1
+  int demoBoard1[8] = {0b01010101,
+                       0b10101000,
+                       0b00000100,
+                       0b00000000,
+                       0b00000000,
+                       0b00000000,
+                       0b01010101,
+                       0b10101010};
+
+  int demoBoard2[8] = {0b01010101,
+                       0b10101000,
+                       0b00000100,
+                       0b00000000,
+                       0b00000000,
+                       0b10000000,
+                       0b00010101,
+                       0b10101010};
+
+  int demoBoard3[8] = {0b01010101,
+                       0b10100000,
+                       0b00010100,
+                       0b00000000,
+                       0b00000000,
+                       0b10000000,
+                       0b00010101,
+                       0b10101010};
+
+  int boardCounter = 0;
+#endif
+
 AccelStepper stepperX(1, DRV1_STEP, DRV1_DIR);
 AccelStepper stepperY(1, DRV2_STEP, DRV2_DIR);
 MultiStepper steppers;
@@ -433,7 +466,7 @@ void setupStepper(){
 
 void sendBoardData(){
   /*
-  Hall Sensor location
+  Hall Sensor location (Hexadecimal counting)
   x 0 x 1 x 2 x 3
   4 x 5 x 6 x 7 x
   x 8 x 9 x A x B
@@ -444,46 +477,60 @@ void sendBoardData(){
   C x D x E x F x
 
   */
-  uint8_t boardState_row1 = 0;
-  uint8_t boardState_row2 = 0;
-  uint8_t boardState_buffer[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-  for(int idx = 0; idx < HALF_OF_SQUARES; idx++){
-    mux1LogPINS.channel(idx);
-    mux2LogPINS.channel(idx);
-    int mux1Val = analogRead(MUX1_SIG);
-    int mux2Val = analogRead(MUX2_SIG);
-    if (mux1Val > MUX_THRESHOLD){
-      switch((int) floor(idx / 4) % 2){
-        case 0:
-          boardState_row1 |= ((idx % 4) * 2) + 1;
-          break;
-        case 1:
-          boardState_row1 |= ((idx % 4) * 2);
-          break;
-      }
+  if(DEMO){
+    if(boardCounter == 0){
+      Serial.write(demoBoard1, 8);
     }
-    if (mux2Val > MUX_THRESHOLD){
-      switch((int) floor(idx / 4) % 2){
-        case 0:
-          boardState_row2 |= ((idx % 4) * 2) + 1;
-          break;
-        case 1:
-          boardState_row2 |= ((idx % 4) * 2);
-          break;
-      }
+    else if (boardCounter == 1){
+      Serial.write(demoBoard2, 8);
     }
-
-    if (idx % 4 == 3){
-      boardState_buffer[(int) floor(idx / 4)] = boardState_row1;
-      boardState_buffer[(int) floor(idx / 4) + 4] = boardState_row2;
-      boardState_row1 = 0;
-      boardState_row2 = 0;
+    else if (boardCounter == 2){
+      Serial.write(demoBoard3, 8);
     }
+    boardCounter++;
   }
+  else{
+    // Read the board state
+    uint8_t boardState_row1 = 0;
+    uint8_t boardState_row2 = 0;
+    uint8_t boardState_buffer[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-  Serial.write(boardState_buffer, 8);
-  Serial.write(DELIMITER);
+    for(int idx = 0; idx < HALF_OF_SQUARES; idx++){
+      mux1LogPINS.channel(idx);
+      mux2LogPINS.channel(idx);
+      int mux1Val = analogRead(MUX1_SIG);
+      int mux2Val = analogRead(MUX2_SIG);
+      if (mux1Val > MUX_THRESHOLD){
+        switch((int) floor(idx / 4) % 2){
+          case 0:
+            boardState_row1 |= ((idx % 4) * 2) + 1;
+            break;
+          case 1:
+            boardState_row1 |= ((idx % 4) * 2);
+            break;
+        }
+      }
+      if (mux2Val > MUX_THRESHOLD){
+        switch((int) floor(idx / 4) % 2){
+          case 0:
+            boardState_row2 |= ((idx % 4) * 2) + 1;
+            break;
+          case 1:
+            boardState_row2 |= ((idx % 4) * 2);
+            break;
+        }
+      }
+
+      if (idx % 4 == 3){
+        boardState_buffer[(int) floor(idx / 4)] = boardState_row1;
+        boardState_buffer[(int) floor(idx / 4) + 4] = boardState_row2;
+        boardState_row1 = 0;
+        boardState_row2 = 0;
+      }
+    }
+    Serial.write(boardState_buffer, 8);
+    Serial.write(DELIMITER);
+  } 
 }
 
 void movementMapping(const char x, const char y){

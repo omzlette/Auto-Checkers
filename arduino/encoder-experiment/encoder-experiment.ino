@@ -64,28 +64,3 @@
 //     output(encoder.getRawAngle());
 //   }
 // }
-
-#include<Wire.h>
-void setup() 
-{
-  Serial.begin(115200);
-  Wire.begin();
-
-  TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN); //interrupt bit clear, TWI Bus is enabled, assert START
-  while(!(TWCR & (1<<TWINT)))  //wait until the process is complete 
-  {
-    ;
-  }
-
-  if((TWSR & 0xF8) != 0x08)  //check that status word 0x08 has been generated due to START condition
-  {
-    Serial.print("Internal Bus Error!");
-    while(1);
-  }
-  Serial.println("The codes have generated START condition."); 
-}
-
-void loop() 
-{
-
-}

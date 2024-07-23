@@ -2,6 +2,6 @@
     "board": "arduino:avr:mega",
     "port": "COM5",
     "programmer": "arduinoisp",
-    "sketch": "arduino\\newTest\\newTest.ino",
+    "sketch": "arduino\\implement\\implement.ino",
     "configuration": "cpu=atmega2560"
 }

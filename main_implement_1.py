@@ -130,7 +130,8 @@ def main():
         if CONNECTION_STATE == DISCONNECTED:
             try:
                 print('Connecting MCU')
-                ser = serial.Serial('/dev/ttyUSB0', 115200)
+                # ser = serial.Serial('/dev/ttyUSB0', 115200)
+                ser = serial.Serial('COM5', 115200)
                 ser.flushInput()
                 ser.flushOutput()
                 time.sleep(1)
@@ -187,6 +188,17 @@ def main():
                     print('Request Board, INIT')
                     PREVMODE = BOARDREQUEST
                     MODE = None
+
+                elif MODE == STOP:
+                    print('Stopping...')
+                    packet = bytearray()
+                    packet.append(ACK)
+                    packet.append(DELIMITER)
+                    ser.write(packet)
+
+                    MAIN_STATE = INIT
+                    MODE = None
+                    continue
                 
                 elif PREVMODE == UPDATEREQUEST and MODE == ACK:
                     print('Changing state to RUNNING')
@@ -207,7 +219,6 @@ def main():
                     print('Comparing Board Data')
                     print(board_data)
                     boardMatch = compare_board_data(board.board, board_data)
-                    del board_data
 
                     packet = bytearray()
                     packet.append(ACK)
@@ -243,17 +254,18 @@ def main():
 
                     MAIN_STATE = INIT
                     MODE = None
+                    continue
 
                 elif MODE == BOARDREQUEST and TURN == 'b':
                     print('Request Board Data, RUNNING, Black Turn')
                     BPieces, BMoves, BCaptures = get_move(board.board, board_data)
-                    del board_data
                     packet = bytearray()
                     packet.append(ACK)
                     packet.append(DELIMITER)
                     ser.write(packet)
 
                     legalMove = checkLegalMove(BPieces, BMoves, BCaptures)
+                    print('Legal Move (Black Turn)?:', legalMove)
                     if legalMove is True:
                         for BPiece, BMove in zip(BPieces, BMoves):
                             board.board, board.turn, _ = player1.update_board(board.board, BPiece, BMove)
@@ -263,7 +275,8 @@ def main():
                     elif legalMove is False:
                         TxBuffer = [UPDATEREQUEST] + [0b10010000] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, 0b10010000])]
                     else:
-                        continue
+                        byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
+                        TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, byteTurn])]
                     
                     packet = bytearray()
                     for byte in TxBuffer:
@@ -277,7 +290,6 @@ def main():
                 elif MODE == BOARDREQUEST and TURN == 'w':
                     print('Request Board Data, RUNNING, White Turn')
                     boardMatch = compare_board_data(board.board, board_data)
-                    del board_data
                     packet = bytearray()
                     packet.append(ACK)
                     packet.append(DELIMITER)
@@ -305,8 +317,18 @@ def main():
                         packet.append(DELIMITER)
                         ser.write(packet)
                         
-                        PREVMODE = UPDATEREQUEST
-                        MODE = None
+                        buffer = ser.read_until(DELIMITER_ENCODE)
+                        if buffer[0] == ACK:
+                            packet = bytearray()
+                            packet.append(BOARDREQUEST)
+                            packet.append(DELIMITER)
+                            ser.write(packet)
+
+                            PREVMODE = None
+                            MODE = BOARDREQUEST
+                        elif buffer[0] == STOP:
+                            PREVMODE = None
+                            MODE = STOP
 
                 elif PREVMODE == UPDATEREQUEST and MODE == ACK and TURN == 'b':
                     print('Update Request, Black Turn')
@@ -444,6 +466,7 @@ def main():
                                     packet.append(byte)
                                 packet.append(DELIMITER)
                                 ser.write(packet)
+                                print('Motor Request:', packet)
 
                                 buffer = ser.read_until(DELIMITER_ENCODE)
                                 print('Buffer Motor Request ACK:', buffer)
@@ -455,6 +478,7 @@ def main():
                                 elif buffer[0] == STOP:
                                     PREVMODE = None
                                     MODE = STOP
+                                    continue
                 
                 else:
                     if isGameOver == 'b':

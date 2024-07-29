@@ -27,9 +27,7 @@ void loop()
     // the Write.endTransmisstion to see if
     // a device did acknowledge to the address.
     Wire.beginTransmission(address);
-    Serial.println("HI1");
     error = Wire.endTransmission();
-    Serial.println("HI2");
     if (error == 0)
     {
    

@@ -33,9 +33,6 @@ def initialize():
     player2 = AlphaBeta('w', board.board, board.movesDone)
     return player1, player2, board
 
-def checksum(buffer):
-    return reduce(lambda x, y: x ^ y, buffer)
-
 def compare_board_data(board, data:bytes):
     checksum = reduce(lambda x, y: x ^ y, data[:-1])
     if checksum == data[-1]:
@@ -57,55 +54,57 @@ def get_move(prevBoard, data:bytes):
     pieceTo = None
     capturedList = []
     newBoard = [[0 for _ in range(8)] for _ in range(8)]
-    for row, byte in enumerate(data):
-        newBoard[row] = bin(byte)[2:].zfill(8)
-        print(newBoard[row], prevBoard[row])
-    print(len(newBoard), len(prevBoard))
-        
-    for row in range(8):
-        for col in range(8):
-            if prevBoard[row][col] != '-' and newBoard[row][col] == '0':
-                if prevBoard[row][col] in ['b', 'B']:
-                    pieceFrom = (row, col)
-                elif prevBoard[row][col] in ['w', 'W']:
-                    capturedList.append((row, col))
-            if prevBoard[row][col] in ['-'] and newBoard[row][col] != '0':
-                pieceTo = (row, col)
+    checksum = reduce(lambda x, y: x ^ y, data[:-1])
+    if checksum == data[-1]:
+        for row, byte in enumerate(data[:-1]):
+            newBoard[row] = bin(byte)[2:].zfill(8)
+            print(newBoard[row], prevBoard[row])
+        print(len(newBoard), len(prevBoard))
+            
+        for row in range(8):
+            for col in range(8):
+                if prevBoard[row][col] != '-' and newBoard[row][col] == '0':
+                    if prevBoard[row][col] in ['b', 'B']:
+                        pieceFrom = (row, col)
+                    elif prevBoard[row][col] in ['w', 'W']:
+                        capturedList.append((row, col))
+                if prevBoard[row][col] in ['-'] and newBoard[row][col] != '0':
+                    pieceTo = (row, col)
 
-    if capturedList:
-        selectedList = [pieceFrom]
-        moves = []
-        distDiff = []
-        reverseFlag = False
-        
-        for row, col in capturedList:
-            rowDelta = abs(row - pieceFrom[0])
-            colDelta = abs(col - pieceFrom[1])
-            distDiff.append((rowDelta, colDelta))
-        
-        if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
-            reverseFlag = True
+        if capturedList:
+            selectedList = [pieceFrom]
+            moves = []
+            distDiff = []
+            reverseFlag = False
+            
+            for row, col in capturedList:
+                rowDelta = abs(row - pieceFrom[0])
+                colDelta = abs(col - pieceFrom[1])
+                distDiff.append((rowDelta, colDelta))
+            
+            if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
+                reverseFlag = True
 
-        if reverseFlag:
-            capturedList = capturedList[::-1]
+            if reverseFlag:
+                capturedList = capturedList[::-1]
 
-        for row, col in capturedList:
-            rowDelta = row - pieceFrom[0]
-            rowDelta = rowDelta // abs(rowDelta)
-            colDelta = col - pieceFrom[1]
-            colDelta = colDelta // abs(colDelta)
-            pieceFrom = (row + rowDelta, col + colDelta)
-            moves.append(pieceFrom)
+            for row, col in capturedList:
+                rowDelta = row - pieceFrom[0]
+                rowDelta = rowDelta // abs(rowDelta)
+                colDelta = col - pieceFrom[1]
+                colDelta = colDelta // abs(colDelta)
+                pieceFrom = (row + rowDelta, col + colDelta)
+                moves.append(pieceFrom)
 
-        selectedList.extend(moves[:-1])
-    elif pieceFrom is not None and pieceTo is not None:
-        selectedList = [pieceFrom]
-        moves = [pieceTo]
-    else:
-        selectedList = []
-        moves = []
+            selectedList.extend(moves[:-1])
+        elif pieceFrom is not None and pieceTo is not None:
+            selectedList = [pieceFrom]
+            moves = [pieceTo]
+        else:
+            selectedList = []
+            moves = []
 
-    return selectedList, moves, capturedList
+        return selectedList, moves, capturedList
 
 def checkLegalMove(selectedList, moveList, capturedList):
     if selectedList == [] or moveList == []:
@@ -134,8 +133,8 @@ def main():
         if CONNECTION_STATE == DISCONNECTED:
             try:
                 print('Connecting MCU')
-                ser = serial.Serial('/dev/ttyUSB0', 115200)
-                # ser = serial.Serial('COM5', 115200)
+                # ser = serial.Serial('/dev/ttyUSB0', 115200)
+                ser = serial.Serial('COM5', 115200)
                 ser.flushInput()
                 ser.flushOutput()
                 time.sleep(1)
@@ -165,11 +164,12 @@ def main():
         elif CONNECTION_STATE == CONNECTED:
             while ser.in_waiting > 0:
                 buffer = ser.read_until(DELIMITER_ENCODE)
+                print(len(buffer), buffer)
                 if len(buffer) == 2:
                     MODE = buffer[0]
                     print(MODE, PREVMODE, TURN)
                     break
-                elif len(buffer) == 9:
+                elif len(buffer) == 10:
                     MODE = BOARDREQUEST
                     board_data = buffer[:-1]
                     print(MODE, PREVMODE, TURN)
@@ -513,24 +513,6 @@ def main():
                             ser.write(packet)
 
                             MAIN_STATE = INIT
-
-            elif MAIN_STATE == RESET_IDLE:
-                buffer = ser.read_until(DELIMITER_ENCODE)
-                if len(buffer) == 2:
-                    MODE = buffer[0]
-                    if MODE == RESET:
-                        print('Resetting...')
-                        packet = bytearray()
-                        packet.append(ACK)
-                        packet.append(DELIMITER)
-                        ser.write(packet)
-
-                        PREVMODE = None
-                        MODE = None
-                        del buffer, packet
-
-                        MAIN_STATE = INIT
-                        break
 
 if __name__ == '__main__':
     main()

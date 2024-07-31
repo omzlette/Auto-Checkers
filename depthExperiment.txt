@@ -59,3 +59,7 @@ Depth: 9, Last Depth: 8, Val: -2327, Piece: (7, 4), Move: [6, 5]
 Depth: 9, Last Depth: 8, Val: -247, Piece: (6, 5), Move: [5, 6]
 Depth: 10, Last Depth: 9, Val: -2247, Piece: (7, 0), Move: [6, 1]
 >>>>>>> a608e634a27dbdf65e030d9622ef8ccb597a9cfe
+Depth: 6, Last Depth: 5, Val: 3, Piece: (6, 1), Move: [5, 0]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (5, 0), Move: [4, 1]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (4, 1), Move: [3, 0]
+Depth: 6, Last Depth: 5, Val: 3, Piece: (6, 3), Move: [5, 2]

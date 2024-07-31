@@ -1,5 +1,5 @@
-import pygame
-from pygame.locals import *
+# import pygame
+# from pygame.locals import *
 import copy
 
 WHITE = (255, 255, 255)

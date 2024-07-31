@@ -754,11 +754,13 @@ class AlphaBeta(Minimax):
         return hash
     
     def storeTransposition(self, board, depth, value, piece, move, alpha, beta):
-        hash = self.hashBoard(board, self.zobristtable)
+        zobristtable = copy.deepcopy(self.zobristtable)
+        hash = self.hashBoard(board, zobristtable)
         self.hashtable[hash] = {'depth': depth, 'value': value, 'piece': piece, 'move': move, 'alpha': alpha,'beta': beta}
 
     def probeTransposition(self, board):
-        hash = self.hashBoard(board, self.zobristtable)
+        zobristtable = copy.deepcopy(self.zobristtable)
+        hash = self.hashBoard(board, zobristtable)
         if hash in self.hashtable:
             return self.hashtable[hash]
         return None

@@ -1,5 +1,5 @@
-# import pygame
-# from pygame.locals import *
+import pygame
+from pygame.locals import *
 import numpy as np
 import copy
 import random
@@ -436,21 +436,21 @@ class User(Player):
         self.ourTurn = 'b' if turn == 'b' else 'w'
         self.oppTurn = 'w' if turn == 'b' else 'b'
 
-    # def get_mouse_pos(self):
-    #     x, y = pygame.mouse.get_pos()
-    #     row, col = y // squareSize, x // squareSize
-    #     return row, col
+    def get_mouse_pos(self):
+        x, y = pygame.mouse.get_pos()
+        row, col = y // squareSize, x // squareSize
+        return row, col
     
-    # def handle_mouse_click(self, row, col, board):
-    #     turn = None
-    #     selectedPiece = []
-    #     if self.selectedPiece == []:
-    #         self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
-    #         board, turn = board, self.turn
-    #     else:
-    #         selectedPiece = self.selectedPiece
-    #         board, turn = self.move_piece([row, col], self.turn, board)
-    #     return board, turn, selectedPiece
+    def handle_mouse_click(self, row, col, board):
+        turn = None
+        selectedPiece = []
+        if self.selectedPiece == []:
+            self.selectedPiece, self.validMoves, self.capturePos = self.select_piece(row, col, self.turn, board)
+            board, turn = board, self.turn
+        else:
+            selectedPiece = self.selectedPiece
+            board, turn = self.move_piece([row, col], self.turn, board)
+        return board, turn, selectedPiece
 
 class Minimax(Player):
     def __init__(self, turn, board, movesDone):

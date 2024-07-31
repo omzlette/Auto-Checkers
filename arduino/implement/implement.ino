@@ -306,7 +306,6 @@ ISR(TIMER1_COMPA_vect) {
         else{
           digitalWrite(LED2_START, HIGH);
         }
-        
         if(sentStartStatus){
           if(receivedACK){
             // receive ACK => change state to IDLE
@@ -467,7 +466,7 @@ ISR(TIMER2_COMPA_vect) {
   if(startButton && _millis - _startTimeout >= 3000 && state != START_IDLE){
     startButton = false;
   }
-  if(stopButton && _millis - _stopTimeout >= 3000 && state != IDLE && state != MOTOR_RUNNING){
+  if(stopButton && _millis - _stopTimeout >= 3000 && (state != IDLE || state != MOTOR_RUNNING)){
     stopButton = false;
   }
   if(setHomeButton && _millis - _setHomeTimeout >= 3000 && state != SETHOME_IDLE){
@@ -497,9 +496,6 @@ ISR(TIMER2_COMPB_vect) {
     }
     if(blackWinStatus){
       digitalWrite(LED7_BTURN, !digitalRead(LED7_BTURN));
-    }
-    if(illegalMoveStatus){
-      digitalWrite(LED6_ERROR, !digitalRead(LED6_ERROR));
     }
   }
 
@@ -590,6 +586,8 @@ void sendBoardData(){
   C x D x E x F x
 
   */
+  byte checksum = 0;
+
   if(DEMO){
     if(boardCounter == 0){
       Serial.write(demoBoard0, 8);
@@ -613,7 +611,7 @@ void sendBoardData(){
     // Read the board state
     uint8_t boardState_row1 = 0;
     uint8_t boardState_row2 = 0;
-    uint8_t boardState_buffer[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t boardState_buffer[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     for(int idx = 0; idx < HALF_OF_SQUARES; idx++){
       mux1LogPINS.channel(idx);
@@ -648,7 +646,11 @@ void sendBoardData(){
         boardState_row2 = 0;
       }
     }
-    Serial.write(boardState_buffer, 8);
+    for (int i = 0; i < 8; i++){
+      checksum ^= boardState_buffer[i];
+    }
+    boardState_buffer[8] = checksum;
+    Serial.write(boardState_buffer, 9);
     Serial.write(DELIMITER);
   } 
 }
@@ -710,7 +712,6 @@ void updateStatus(const char status){
   4: black turn
   5: white turn
   6: error
-  7: illegal move (blink, error led)
   */
   for(int i = 0; i < 8; i++){
     if (status & (1 << i)){
@@ -733,10 +734,6 @@ void updateStatus(const char status){
         case 6:
           errorStatus = true;
           break;
-        case 7:
-          // illegal move (blink)
-          illegalMoveStatus = true;
-          break;
       }
     }
     else{
@@ -758,10 +755,6 @@ void updateStatus(const char status){
           break;
         case 6:
           errorStatus = false;
-          break;
-        case 7:
-          // illegal move (blink)
-          illegalMoveStatus = false;
           break;
       }
     }
@@ -862,7 +855,7 @@ void processIncomingByte(const byte inByte){
 
       if(bufferIDX > 0){
         for (int i = 0; i < bufferIDX - 1; i++){
-          calculatedChecksum |= RxBuffer[i];
+          calculatedChecksum ^= RxBuffer[i];
           dataBuffer[i] = RxBuffer[i];
         }
       }

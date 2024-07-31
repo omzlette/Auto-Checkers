@@ -18,7 +18,6 @@ UPDATEREQUEST = 0xF3
 DISCONNECTION_REQUEST = 0xFF
 START = 0x99
 STOP = 0x98
-RESET = 0x97
 
 # MODES
 INIT = 0
@@ -34,18 +33,23 @@ def initialize():
     player2 = AlphaBeta('w', board.board, board.movesDone)
     return player1, player2, board
 
+def checksum(buffer):
+    return reduce(lambda x, y: x ^ y, buffer)
+
 def compare_board_data(board, data:bytes):
-    checkBoard = [[0 for _ in range(8)] for _ in range(8)]
-    print(len(board), len(data))
-    for row, byte in enumerate(data):
-        checkBoard[row] = bin(byte)[2:].zfill(8)
-        print(checkBoard[row], board[row])
-        for col in range(8):
-            if board[row][col] == '-' and checkBoard[row][col] != '0':
-                return False
-            elif board[row][col].lower() in ['b', 'w'] and checkBoard[row][col] != '1':
-                return False
-    return True
+    checksum = reduce(lambda x, y: x ^ y, data[:-1])
+    if checksum == data[-1]:
+        checkBoard = [[0 for _ in range(8)] for _ in range(8)]
+        for row, byte in enumerate(data[:-1]):
+            checkBoard[row] = bin(byte)[2:].zfill(8)
+            for col in range(8):
+                if board[row][col] == '-' and checkBoard[row][col] != '0':
+                    return False
+                elif board[row][col].lower() in ['b', 'w'] and checkBoard[row][col] != '1':
+                    return False
+        return True
+    else:
+        return False
 
 def get_move(prevBoard, data:bytes):
     # exclusive to black
@@ -226,9 +230,9 @@ def main():
                     ser.write(packet)
 
                     if boardMatch:
-                        TxBuffer = [UPDATEREQUEST] + [0b00010000] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, 0b00010000])]
+                        TxBuffer = [UPDATEREQUEST] + [0b00010000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b00010000])]
                     else:
-                        TxBuffer = [UPDATEREQUEST] + [0b01000000] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, 0b01000000])]
+                        TxBuffer = [UPDATEREQUEST] + [0b01000000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01000000])]
                     
                     packet = bytearray()
                     for byte in TxBuffer:
@@ -271,12 +275,12 @@ def main():
                             board.board, board.turn, _ = player1.update_board(board.board, BPiece, BMove)
                             board.updateMovesDict(BPiece, BMove, 'b')
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
-                        TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, byteTurn])]
+                        TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
                     elif legalMove is False:
-                        TxBuffer = [UPDATEREQUEST] + [0b10010000] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, 0b10010000])]
+                        TxBuffer = [UPDATEREQUEST] + [0b01010000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01010000])]
                     else:
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
-                        TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, byteTurn])]
+                        TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
                     
                     packet = bytearray()
                     for byte in TxBuffer:
@@ -299,7 +303,7 @@ def main():
 
                     if boardMatch:
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
-                        TxBuffer = [UPDATEREQUEST] + [byteTurn] +[reduce(lambda x, y: x | y, [UPDATEREQUEST, byteTurn])]
+                        TxBuffer = [UPDATEREQUEST] + [byteTurn] +[reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
                         packet = bytearray()
                         for byte in TxBuffer:
                             packet.append(byte)
@@ -310,7 +314,7 @@ def main():
                         MODE = None
 
                     else:
-                        TxBuffer = [UPDATEREQUEST] + [0b01100000] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, 0b01100000])]
+                        TxBuffer = [UPDATEREQUEST] + [0b01100000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01100000])]
                         packet = bytearray()
                         for byte in TxBuffer:
                             packet.append(byte)
@@ -355,7 +359,7 @@ def main():
                 elif PREVMODE == UPDATEREQUEST and MODE == NACK:
                     print('Update Request Failed, RUNNING')
                     byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
-                    TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x | y, [UPDATEREQUEST, byteTurn])]
+                    TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
                     packet = bytearray()
                     for byte in TxBuffer:
                         packet.append(byte)
@@ -374,7 +378,7 @@ def main():
                         mappedBoard, startpos, endpos = mapping(board.prevBoard, WPiece, WMove)
                         pathPoint = astar(mappedBoard, startpos, endpos)
                         flattenPath = [item for sublist in pathPoint for item in sublist]
-                        TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x | y, [MOTORREQUEST] + flattenPath)]
+                        TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
                         packet = bytearray()
                         for byte in TxBuffer:
                             packet.append(byte)
@@ -436,7 +440,7 @@ def main():
                                 mappedBoard, startpos, endpos = mapping(board.prevBoard, WCapture, None)
                                 pathPoint = astar(mappedBoard, startpos, endpos)
                                 flattenPath = [item for sublist in pathPoint for item in sublist]
-                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x | y, [MOTORREQUEST] + flattenPath)]
+                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
                                 
                                 packet = bytearray()
                                 for byte in TxBuffer:
@@ -460,7 +464,7 @@ def main():
                                 pathPoint = astar(mappedBoard, startpos, endpos)
                                 print(pathPoint)
                                 flattenPath = [item for sublist in pathPoint for item in sublist]
-                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x | y, [MOTORREQUEST] + flattenPath)]
+                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
                                 packet = bytearray()
                                 for byte in TxBuffer:
                                     packet.append(byte)
@@ -482,11 +486,11 @@ def main():
                 
                 else:
                     if isGameOver == 'b':
-                        TxBuffer = [0xF3] + [0b00000100] + [reduce(lambda x, y: x | y, [0xF3, 0b00000100])]
+                        TxBuffer = [0xF3] + [0b00000100] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000100])]
                     elif isGameOver == 'w':
-                        TxBuffer = [0xF3] + [0b00000010] + [reduce(lambda x, y: x | y, [0xF3, 0b00000010])]
+                        TxBuffer = [0xF3] + [0b00000010] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000010])]
                     elif isGameOver == 'draw':
-                        TxBuffer = [0xF3] + [0b00000001] + [reduce(lambda x, y: x | y, [0xF3, 0b00000001])]
+                        TxBuffer = [0xF3] + [0b00000001] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000001])]
 
                     packet = bytearray()
                     for byte in TxBuffer:

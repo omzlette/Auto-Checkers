@@ -172,9 +172,9 @@ def main():
                         ser.write(packet)
                         if boardMatch:
                             startFlag = True
-                            TxBuffer = [0xF3] + [0b00010000] + [reduce(lambda x, y: x | y, [0xF3, 0b00010000])]
+                            TxBuffer = [0xF3] + [0b00010000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00010000])]
                         else:
-                            TxBuffer = [0xF3] + [0b01000000] + [reduce(lambda x, y: x | y, [0xF3, 0b01000000])]
+                            TxBuffer = [0xF3] + [0b01000000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b01000000])]
                         
                         packet = bytearray()
                         for byte in TxBuffer:
@@ -240,9 +240,9 @@ def main():
                                         for BPiece, BMove in zip(BPieces, BMoves):
                                             board.board, board.turn, _ = player1.update_board(board.board, BPiece, BMove)
                                             board.updateMovesDict(BPiece, BMove, 'b')
-                                        TxBuffer = [0xF3] + [0b00100000] + [reduce(lambda x, y: x | y, [0xF3, 0b00100000])]
+                                        TxBuffer = [0xF3] + [0b00100000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00100000])]
                                     elif legalMove is False:
-                                        TxBuffer = [0xF3] + [0b10010000] + [reduce(lambda x, y: x | y, [0xF3, 0b10010000])]
+                                        TxBuffer = [0xF3] + [0b10010000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b10010000])]
                                     else:
                                         continue
                                     
@@ -260,7 +260,7 @@ def main():
                                         del RxBuffer
                                         break
                                     else:
-                                        TxBuffer = [0xF3] + [0b00100000] + [reduce(lambda x, y: x | y, [0xF3, 0b00100000])]
+                                        TxBuffer = [0xF3] + [0b00100000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00100000])]
                                         packet = bytearray()
                                         for byte in TxBuffer:
                                             packet.append(byte)
@@ -290,7 +290,7 @@ def main():
                                     mappedBoard, startpos, endpos = mapping(board.prevBoard, WCapture, None)
                                     pathPoint = astar(mappedBoard, startpos, endpos)
                                     flattenPath = [item for sublist in pathPoint for item in sublist]
-                                    TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x | y, [0xF2] + flattenPath)]
+                                    TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x ^ y, [0xF2] + flattenPath)]
                                     packet = bytearray()
                                     for byte in TxBuffer:
                                         packet.append(byte)
@@ -303,7 +303,7 @@ def main():
                                     pathPoint = astar(mappedBoard, startpos, endpos)
                                     print(pathPoint)
                                     flattenPath = [item for sublist in pathPoint for item in sublist]
-                                    TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x | y, [0xF2] + flattenPath)]
+                                    TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x ^ y, [0xF2] + flattenPath)]
                                     packet = bytearray()
                                     for byte in TxBuffer:
                                         packet.append(byte)
@@ -321,7 +321,7 @@ def main():
                                             mappedBoard, startpos, endpos = mapping(board.prevBoard, WCapture, WMove)
                                             pathPoint = astar(mappedBoard, startpos, endpos)
                                             flattenPath = [item for sublist in pathPoint for item in sublist]
-                                            TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x | y, [0xF2] + flattenPath)]
+                                            TxBuffer = [0xF2] + flattenPath + [reduce(lambda x, y: x ^ y, [0xF2] + flattenPath)]
                                             packet = bytearray()
                                             for byte in TxBuffer:
                                                 packet.append(byte)
@@ -349,7 +349,7 @@ def main():
                                                         ser.write(packet)
                                                         if boardMatch:
                                                             turnByte = 0b00010000 if board.turn == 'b' else 0b00100000
-                                                            TxBuffer = [0xF3] + [turnByte] + [reduce(lambda x, y: x | y, [0xF3, 0b00010000])]
+                                                            TxBuffer = [0xF3] + [turnByte] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00010000])]
                                                             packet = bytearray()
                                                             for byte in TxBuffer:
                                                                 packet.append(byte)
@@ -366,7 +366,7 @@ def main():
                                                                 del RxBuffer
                                                                 break
                                                         else:
-                                                            TxBuffer = [0xF3] + [0b01100000] + [reduce(lambda x, y: x | y, [0xF3, 0b01100000])]
+                                                            TxBuffer = [0xF3] + [0b01100000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b01100000])]
                                                             packet = bytearray()
                                                             for byte in TxBuffer:
                                                                 packet.append(byte)
@@ -396,7 +396,7 @@ def main():
                                                 packet.append(DELIMITER)
                                                 ser.write(packet)
                                                 if boardMatch:
-                                                    TxBuffer = [0xF3] + [0b00010000] + [reduce(lambda x, y: x | y, [0xF3, 0b00010000])]
+                                                    TxBuffer = [0xF3] + [0b00010000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00010000])]
                                                     packet = bytearray()
                                                     for byte in TxBuffer:
                                                         packet.append(byte)
@@ -411,7 +411,7 @@ def main():
                                                         del RxBuffer
                                                         break
                                                 else:
-                                                    TxBuffer = [0xF3] + [0b01100000] + [reduce(lambda x, y: x | y, [0xF3, 0b01100000])]
+                                                    TxBuffer = [0xF3] + [0b01100000] + [reduce(lambda x, y: x ^ y, [0xF3, 0b01100000])]
                                                     packet = bytearray()
                                                     for byte in TxBuffer:
                                                         packet.append(byte)
@@ -424,11 +424,11 @@ def main():
 
                     elif isGameOver:
                         if isGameOver == 'b':
-                            TxBuffer = [0xF3] + [0b00000100] + [reduce(lambda x, y: x | y, [0xF3, 0b00000100])]
+                            TxBuffer = [0xF3] + [0b00000100] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000100])]
                         elif isGameOver == 'w':
-                            TxBuffer = [0xF3] + [0b00000010] + [reduce(lambda x, y: x | y, [0xF3, 0b00000010])]
+                            TxBuffer = [0xF3] + [0b00000010] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000010])]
                         elif isGameOver == 'draw':
-                            TxBuffer = [0xF3] + [0b00000001] + [reduce(lambda x, y: x | y, [0xF3, 0b00000001])]
+                            TxBuffer = [0xF3] + [0b00000001] + [reduce(lambda x, y: x ^ y, [0xF3, 0b00000001])]
 
                         packet = bytearray()
                         for byte in TxBuffer:

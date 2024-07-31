@@ -98,7 +98,7 @@ ISR(TIMER1_COMPA_vect){
     if(Started){
       if(_millis - mainUpCntDown > 3000 && forwardStarted){
         stepperX.moveTo(movementGap * 15);
-        stepperX.setSpeed(maxSPS);
+        // stepperX.setSpeed(maxSPS);
         if(stepperX.distanceToGo() == 0){
           stepperX.setSpeed(0);
           forwardStarted = false;
@@ -109,7 +109,7 @@ ISR(TIMER1_COMPA_vect){
 
       if(_millis - mainDownCntDown > 3000 && backwardStarted){
         stepperX.moveTo(0);
-        stepperX.setSpeed(-maxSPS);
+        // stepperX.setSpeed(-maxSPS);
         if(stepperX.distanceToGo() == 0){
           stepperX.setSpeed(0);
           backwardStarted = false;
@@ -118,8 +118,8 @@ ISR(TIMER1_COMPA_vect){
           endCntDown = _millis;
         }
       }
-      stepperX.runSpeedToPosition();
-      // stepperX.run();
+      // stepperX.runSpeedToPosition();
+      stepperX.run();
     }
 
     if(_millis - endCntDown > 3000){

@@ -48,11 +48,11 @@ unsigned long Millis();
 
 void setup(){
   cli();
-  // 200kHz
+  // 100kHz
   TCCR1A = 0;
   TCCR1B = 0;
   TCNT1  = 0;
-  OCR1A = 79; // = (16*10^6) / prescaler / (200k) - 1
+  OCR1A = 799; // = (16*10^6) / prescaler / (200k) - 1
   TCCR1B |= (1 << WGM12);
   TCCR1B |= (1 << CS10); // prescaler = 1
   TIMSK1 |= (1 << OCIE1A);

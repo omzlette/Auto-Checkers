@@ -181,12 +181,12 @@ bool isACK(const byte inByte);
 void setup() {
   cli();
 
-  // Set timer1 interrupt at 200kHz
+  // Set timer1 interrupt at 20kHz
   TCCR1A = 0; // set entire TCCR1A register to 0
   TCCR1B = 0; // same for TCCR1B
   TCNT1  = 0; // initialize counter value to 0
-  // set compare match register for 200khz increments
-  OCR1A = 79; // = (16*10^6) / (1*10^4) - 1 (must be <65536)
+  // set compare match register for 20khz increments
+  OCR1A = 799; // = (16*10^6) / (1*10^4) - 1 (must be <65536)
   // turn on CTC mode
   TCCR1B |= (1 << WGM12);
   // Set 1 prescaler
@@ -242,57 +242,39 @@ ISR(TIMER1_COMPA_vect) {
 
         resetStatus();
 
-        if(stopButton && !sentStopStatus){
-          digitalWrite(LED5_RUNNING, LOW);
-          digitalWrite(DRV1_EN, LOW);
-          digitalWrite(DRV2_EN, LOW);
+        if(setHomeButton){
+          drawStatus = false;
+          whiteWinStatus = false;
+          blackWinStatus = false;
 
-          Serial.write(0x98);
-          Serial.write(DELIMITER);
-          sentStopStatus = true;
-          stopButton = false;
-        }
-        
-        if(sentStopStatus){
-          if(receivedACK){
-            // receive ACK => change state to SETHOME_IDLE
-            state = SETHOME_IDLE;
-            sentStopStatus = false;
-            receivedACK = false;
-            break;
+          if(digitalRead(LED5_RUNNING) == 0){
+            digitalWrite(DRV1_EN, HIGH);
+            digitalWrite(DRV2_EN, HIGH);
           }
+          digitalWrite(LED3_SETHOME, LOW);
+          digitalWrite(LED5_RUNNING, HIGH);
+
+          stepperX.setSpeed(-maxSPS);
+          stepperY.setSpeed(-maxSPS);
+          stepperX.runSpeed();
+          stepperY.runSpeed();
         }
         else{
-          if(setHomeButton){
-            if(digitalRead(LED5_RUNNING) == 0){
-              digitalWrite(DRV1_EN, HIGH);
-              digitalWrite(DRV2_EN, HIGH);
-            }
-            digitalWrite(LED3_SETHOME, LOW);
-            digitalWrite(LED5_RUNNING, HIGH);
-
-            stepperX.setSpeed(-maxSPS);
-            stepperY.setSpeed(-maxSPS);
-            stepperX.runSpeed();
-            stepperY.runSpeed();
-          }
-          else{
-            digitalWrite(LED3_SETHOME, HIGH);
-          }
-          // to START_IDLE
-          if(limitSwitch1 && digitalRead(DRV1_EN) == HIGH){
-            stepperX.setCurrentPosition(0);
-            digitalWrite(DRV1_EN, LOW);
-          }
-          if(limitSwitch2 && digitalRead(DRV2_EN) == HIGH){
-            stepperY.setCurrentPosition(0);
-            digitalWrite(DRV2_EN, LOW);
-          }
-          if(limitSwitch1 && limitSwitch2){
-            digitalWrite(LED5_RUNNING, LOW);
-            setHomeButton = false;
-            state = START_IDLE;
-          }
+          digitalWrite(LED3_SETHOME, HIGH);
+        }
+        // to START_IDLE
+        if(limitSwitch1 && digitalRead(DRV1_EN) == HIGH){
+          stepperX.setCurrentPosition(0);
+          digitalWrite(DRV1_EN, LOW);
+        }
+        if(limitSwitch2 && digitalRead(DRV2_EN) == HIGH){
+          stepperY.setCurrentPosition(0);
+          digitalWrite(DRV2_EN, LOW);
+        }
+        if(limitSwitch1 && limitSwitch2){
+          digitalWrite(LED5_RUNNING, LOW);
+          setHomeButton = false;
+          state = START_IDLE;
         }
         break;
 
@@ -301,6 +283,7 @@ ISR(TIMER1_COMPA_vect) {
         if(startButton && !sentStartStatus){
           Serial.write(0x99);
           Serial.write(DELIMITER);
+          Serial3.write(0x99);
           sentStartStatus = true;
         }
         else{
@@ -327,7 +310,7 @@ ISR(TIMER1_COMPA_vect) {
         digitalWrite(DRV1_EN, LOW);
         digitalWrite(DRV2_EN, LOW);
 
-        if(blackWinStatus || whiteWinStatus){
+        if(blackWinStatus || whiteWinStatus || drawStatus){
           state = SETHOME_IDLE;
         }
 
@@ -338,6 +321,7 @@ ISR(TIMER1_COMPA_vect) {
 
           Serial.write(0x98);
           Serial.write(DELIMITER);
+          Serial3.write(0x98);
           sentStopStatus = true;
           stopButton = false;
         }
@@ -375,6 +359,7 @@ ISR(TIMER1_COMPA_vect) {
 
           Serial.write(0x98);
           Serial.write(DELIMITER);
+          Serial.write(0x98);
           sentStopStatus = true;
           stopButton = false;
         }
@@ -404,14 +389,6 @@ ISR(TIMER1_COMPA_vect) {
                   int x = _dataBuffer[posIDX];
                   int y = _dataBuffer[posIDX + 1];
                   movementMapping(x, y);
-                  Serial3.println();
-                  Serial3.print(posIDX);
-                  Serial3.print(DELIMITER);
-                  for(int i = 0; i < _dataLength; i++){
-                    Serial3.print(_dataBuffer[i], DEC);
-                    Serial3.print(DELIMITER);
-                  }
-                  Serial3.println();
                   posIDX += 2;
                 }
                 else{
@@ -450,6 +427,7 @@ ISR(TIMER1_COMPA_vect) {
 
             Serial.write(CMPLT);
             Serial.write(DELIMITER);
+            Serial3.write(CMPLT);
             state = IDLE;
           }
 
@@ -564,9 +542,6 @@ void setupStepper(){
 }
 
 void resetStatus(){
-  drawStatus = false;
-  whiteWinStatus = false;
-  blackWinStatus = false;
   blackTurnStatus = false;
   whiteTurnStatus = false;
   errorStatus = false;
@@ -586,23 +561,40 @@ void sendBoardData(){
   C x D x E x F x
 
   */
+  cli();
   byte checksum = 0;
 
   if(DEMO){
     if(boardCounter == 0){
+      for (int i = 0; i < 8; i++){
+        checksum ^= demoBoard0[i];
+      }
       Serial.write(demoBoard0, 8);
+      Serial.write(checksum);
       Serial.write(DELIMITER);
     }
     else if (boardCounter == 1){
+      for (int i = 0; i < 8; i++){
+        checksum ^= demoBoard1[i];
+      }
       Serial.write(demoBoard1, 8);
+      Serial.write(checksum);
       Serial.write(DELIMITER);
     }
     else if (boardCounter == 2){
+      for (int i = 0; i < 8; i++){
+        checksum ^= demoBoard2[i];
+      }
       Serial.write(demoBoard2, 8);
+      Serial.write(checksum);
       Serial.write(DELIMITER);
     }
     else if (boardCounter == 3){
+      for (int i = 0; i < 8; i++){
+        checksum ^= demoBoard3[i];
+      }
       Serial.write(demoBoard3, 8);
+      Serial.write(checksum);
       Serial.write(DELIMITER);
     }
     boardCounter++;
@@ -653,6 +645,8 @@ void sendBoardData(){
     Serial.write(boardState_buffer, 9);
     Serial.write(DELIMITER);
   } 
+
+  sei();
 }
 
 void movementMapping(const char x, const char y){
@@ -841,13 +835,10 @@ void processIncomingByte(const byte inByte){
   /*
   Process the incoming byte from the Jetson
   */
-
   switch (inByte)
   {
   case DELIMITER:   // end of text
-    Serial3.print(DELIMITER);
-    Serial3.println();
-    RxBuffer[bufferIDX] = 0;  // terminating null byte
+      RxBuffer[bufferIDX] = 0;  // terminating null byte
 
     if (mode_received){
       calculatedChecksum = mode;
@@ -888,8 +879,7 @@ void processIncomingByte(const byte inByte){
 
   default:
     // keep adding if not full ... allow for terminating null byte
-    Serial3.print(inByte, DEC);
-    Serial3.print(' ');
+    Serial3.write(inByte);
     if (!mode_received){
       mode = inByte;
       mode_received = true;

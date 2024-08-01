@@ -854,6 +854,11 @@ def is_game_over(board, movesDone, mandatory_moves):
             if all(not i for i in tempbcap):
                 return 'b'
 
+    if whiteCount == 0:
+        return 'b'
+    if blackCount == 0:
+        return 'w'
+
     if (blackCount == 1 and blackKing == 1) and\
        (whiteCount == 1 and whiteKing == 1) and\
        all(not i for i in tempbcap) and\

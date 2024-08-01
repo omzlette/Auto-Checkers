@@ -77,16 +77,17 @@ def get_move(prevBoard, data:bytes):
             distDiff = []
             reverseFlag = False
             
-            for row, col in capturedList:
-                rowDelta = abs(row - pieceFrom[0])
-                colDelta = abs(col - pieceFrom[1])
-                distDiff.append((rowDelta, colDelta))
-            
-            if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
-                reverseFlag = True
+            if len(capturedList) > 1:
+                for row, col in capturedList:
+                    rowDelta = abs(row - pieceFrom[0])
+                    colDelta = abs(col - pieceFrom[1])
+                    distDiff.append((rowDelta, colDelta))
+                
+                if distDiff[0][0] > distDiff[1][0] or distDiff[0][1] > distDiff[1][1]:
+                    reverseFlag = True
 
-            if reverseFlag:
-                capturedList = capturedList[::-1]
+                if reverseFlag:
+                    capturedList = capturedList[::-1]
 
             for row, col in capturedList:
                 rowDelta = row - pieceFrom[0]
@@ -123,7 +124,9 @@ def checkLegalMove(selectedList, moveList, capturedList):
 
 def main():
     user_timer = 0
+    AI_timer = 0
     MOTORREQUEST_ACK_FLAG = False
+    ERRORFLAG = False
     MAIN_STATE = 0
     CONNECTION_STATE = 0
     PREVMODE = None
@@ -133,8 +136,8 @@ def main():
         if CONNECTION_STATE == DISCONNECTED:
             try:
                 print('Connecting MCU')
-                # ser = serial.Serial('/dev/ttyUSB0', 115200)
-                ser = serial.Serial('COM5', 115200)
+                ser = serial.Serial('/dev/ttyUSB0', 115200)
+                # ser = serial.Serial('COM5', 115200)
                 ser.flushInput()
                 ser.flushOutput()
                 time.sleep(1)
@@ -154,8 +157,6 @@ def main():
                     if RxBuffer[0] == ACK:
                         print('MCU Connected')
                         CONNECTION_STATE = CONNECTED
-                        player1, player2, board = initialize()
-                        isGameOver = False
                         del RxBuffer
             except:
                 print('Waiting for MCU...')
@@ -183,6 +184,9 @@ def main():
                     packet.append(ACK)
                     packet.append(DELIMITER)
                     ser.write(packet)
+
+                    player1, player2, board = initialize()
+                    isGameOver = False
 
                     packet = bytearray()
                     packet.append(BOARDREQUEST)
@@ -231,9 +235,11 @@ def main():
 
                     if boardMatch:
                         TxBuffer = [UPDATEREQUEST] + [0b00010000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b00010000])]
+                        ERRORFLAG = False
                     else:
                         TxBuffer = [UPDATEREQUEST] + [0b01000000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01000000])]
-                    
+                        ERRORFLAG = True
+
                     packet = bytearray()
                     for byte in TxBuffer:
                         packet.append(byte)
@@ -276,12 +282,15 @@ def main():
                             board.updateMovesDict(BPiece, BMove, 'b')
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
                         TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
+                        ERRORFLAG = False
                     elif legalMove is False:
                         TxBuffer = [UPDATEREQUEST] + [0b01010000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01010000])]
+                        ERRORFLAG = True
                     else:
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
                         TxBuffer = [UPDATEREQUEST] + [byteTurn] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
-                    
+                        ERRORFLAG = False
+
                     packet = bytearray()
                     for byte in TxBuffer:
                         packet.append(byte)
@@ -304,6 +313,7 @@ def main():
                     if boardMatch:
                         byteTurn = 0b00100000 if board.turn == 'w' else 0b00010000
                         TxBuffer = [UPDATEREQUEST] + [byteTurn] +[reduce(lambda x, y: x ^ y, [UPDATEREQUEST, byteTurn])]
+                        ERRORFLAG = False
                         packet = bytearray()
                         for byte in TxBuffer:
                             packet.append(byte)
@@ -315,6 +325,7 @@ def main():
 
                     else:
                         TxBuffer = [UPDATEREQUEST] + [0b01100000] + [reduce(lambda x, y: x ^ y, [UPDATEREQUEST, 0b01100000])]
+                        ERRORFLAG = True
                         packet = bytearray()
                         for byte in TxBuffer:
                             packet.append(byte)
@@ -373,31 +384,32 @@ def main():
 
                 elif MOTORREQUEST_ACK_FLAG is True:
                     MOTORREQUEST_ACK_FLAG = False
-                    if captureFlag:
-                        print('Requesting Next Piece Motor Move')
-                        mappedBoard, startpos, endpos = mapping(board.prevBoard, WPiece, WMove)
-                        pathPoint = astar(mappedBoard, startpos, endpos)
-                        flattenPath = [item for sublist in pathPoint for item in sublist]
-                        TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
-                        packet = bytearray()
-                        for byte in TxBuffer:
-                            packet.append(byte)
-                        packet.append(DELIMITER)
-                        ser.write(packet)
+                    print('Wait for Motor Done')
+                    buffer = ser.read_until(DELIMITER_ENCODE)
+                    if buffer[0] == CMPLT:
+                        if captureFlag:
+                            print('Requesting Next Piece Motor Move')
+                            mappedBoard, startpos, endpos = mapping(board.prevBoard, WPiece, WMove)
+                            pathPoint = astar(mappedBoard, startpos, endpos)
+                            flattenPath = [item for sublist in pathPoint for item in sublist]
+                            TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
+                            packet = bytearray()
+                            for byte in TxBuffer:
+                                packet.append(byte)
+                            packet.append(DELIMITER)
+                            ser.write(packet)
+                            captureFlag = False
 
-                        buffer = ser.read_until(DELIMITER_ENCODE)
-                        if buffer[0] == ACK:
-                            MOTORREQUEST_ACK_FLAG = True
-                            PREVMODE = None
-                            MODE = None
-                        elif buffer[0] == STOP:
-                            PREVMODE = None
-                            MODE = STOP
-                    
-                    else:
-                        print('Wait for Motor Done')
-                        buffer = ser.read_until(DELIMITER_ENCODE)
-                        if buffer[0] == CMPLT:
+                            buffer = ser.read_until(DELIMITER_ENCODE)
+                            if buffer[0] == ACK:
+                                MOTORREQUEST_ACK_FLAG = True
+                                PREVMODE = None
+                                MODE = None
+                            elif buffer[0] == STOP:
+                                PREVMODE = None
+                                MODE = STOP
+                        
+                        else:
                             packet = bytearray()
                             packet.append(BOARDREQUEST)
                             packet.append(DELIMITER)
@@ -410,11 +422,11 @@ def main():
                             elif buffer[0] == STOP:
                                 PREVMODE = None
                                 MODE = STOP
-                        elif buffer[0] == STOP:
-                            PREVMODE = None
-                            MODE = STOP
+                    elif buffer[0] == STOP:
+                        PREVMODE = None
+                        MODE = STOP
 
-                if not isGameOver:
+                if not isGameOver and MOTORREQUEST_ACK_FLAG is False:
                     if TURN == 'b':
                         if time.time() - user_timer >= 3:
                             print('Player Turn')
@@ -425,64 +437,75 @@ def main():
                             user_timer = time.time()
 
                     elif TURN == 'w' and MODE != BOARDREQUEST and PREVMODE != UPDATEREQUEST:
-                        print('AI Turn')
-                        WPiece, WMove = player2.play(board.board)
-                        if WPiece is not None and WMove is not None:
-                            player2.prevCount = countBlack(board.board) + countWhite(board.board)
-                            board.prevBoard = copy.deepcopy(board.board)
-                            board.board, board.turn, WCapture = player2.update_board(board.board, WPiece, WMove)
-                            board.updateMovesDict(WPiece, WMove, 'w')
+                        if ERRORFLAG is False:
+                            # print('AI Turn')
+                            WPiece, WMove = player2.play(board.board)
+                            if WPiece is not None and WMove is not None:
+                                player2.prevCount = countBlack(board.board) + countWhite(board.board)
+                                board.prevBoard = copy.deepcopy(board.board)
+                                board.board, board.turn, WCapture = player2.update_board(board.board, WPiece, WMove)
+                                board.updateMovesDict(WPiece, WMove, 'w')
 
-                            print('AI Search Done')
+                                print('AI Search Done')
 
-                            if WCapture != []:
-                                captureFlag = True
-                                mappedBoard, startpos, endpos = mapping(board.prevBoard, WCapture, None)
-                                pathPoint = astar(mappedBoard, startpos, endpos)
-                                flattenPath = [item for sublist in pathPoint for item in sublist]
-                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
-                                
+                                if WCapture != []:
+                                    captureFlag = True
+                                    mappedBoard, startpos, endpos = mapping(board.prevBoard, WCapture[0], None)
+                                    pathPoint = astar(mappedBoard, startpos, endpos)
+                                    print(pathPoint)
+                                    flattenPath = [item for sublist in pathPoint for item in sublist]
+                                    TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
+                                    
+                                    packet = bytearray()
+                                    for byte in TxBuffer:
+                                        packet.append(byte)
+                                    packet.append(DELIMITER)
+                                    ser.write(packet)
+
+                                    buffer = ser.read_until(DELIMITER_ENCODE)
+                                    if buffer[0] == ACK:
+                                        print('Motor Request ACK')
+                                        MOTORREQUEST_ACK_FLAG = True
+                                        PREVMODE = None
+                                        MODE = None
+                                    elif buffer[0] == STOP:
+                                        PREVMODE = None
+                                        MODE = STOP
+
+                                else:
+                                    captureFlag = False
+                                    mappedBoard, startpos, endpos = mapping(board.prevBoard, WPiece, WMove)
+                                    pathPoint = astar(mappedBoard, startpos, endpos)
+                                    print(pathPoint)
+                                    flattenPath = [item for sublist in pathPoint for item in sublist]
+                                    TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
+                                    packet = bytearray()
+                                    for byte in TxBuffer:
+                                        packet.append(byte)
+                                    packet.append(DELIMITER)
+                                    ser.write(packet)
+                                    print('Motor Request:', packet)
+
+                                    buffer = ser.read_until(DELIMITER_ENCODE)
+                                    print('Buffer Motor Request ACK:', buffer)
+                                    if buffer[0] == ACK:
+                                        print('Motor Request ACK')
+                                        MOTORREQUEST_ACK_FLAG = True
+                                        PREVMODE = None
+                                        MODE = None
+                                    elif buffer[0] == STOP:
+                                        PREVMODE = None
+                                        MODE = STOP
+                                        continue
+                        else:
+                            if time.time() - AI_timer >= 3:
+                                print('AI Turn, Error')
                                 packet = bytearray()
-                                for byte in TxBuffer:
-                                    packet.append(byte)
+                                packet.append(BOARDREQUEST)
                                 packet.append(DELIMITER)
                                 ser.write(packet)
+                                AI_timer = time.time()
 
-                                buffer = ser.read_until(DELIMITER_ENCODE)
-                                if buffer[0] == ACK:
-                                    print('Motor Request ACK')
-                                    MOTORREQUEST_ACK_FLAG = True
-                                    PREVMODE = None
-                                    MODE = None
-                                elif buffer[0] == STOP:
-                                    PREVMODE = None
-                                    MODE = STOP
-
-                            else:
-                                captureFlag = False
-                                mappedBoard, startpos, endpos = mapping(board.prevBoard, WPiece, WMove)
-                                pathPoint = astar(mappedBoard, startpos, endpos)
-                                print(pathPoint)
-                                flattenPath = [item for sublist in pathPoint for item in sublist]
-                                TxBuffer = [MOTORREQUEST] + flattenPath + [reduce(lambda x, y: x ^ y, [MOTORREQUEST] + flattenPath)]
-                                packet = bytearray()
-                                for byte in TxBuffer:
-                                    packet.append(byte)
-                                packet.append(DELIMITER)
-                                ser.write(packet)
-                                print('Motor Request:', packet)
-
-                                buffer = ser.read_until(DELIMITER_ENCODE)
-                                print('Buffer Motor Request ACK:', buffer)
-                                if buffer[0] == ACK:
-                                    print('Motor Request ACK')
-                                    MOTORREQUEST_ACK_FLAG = True
-                                    PREVMODE = None
-                                    MODE = None
-                                elif buffer[0] == STOP:
-                                    PREVMODE = None
-                                    MODE = STOP
-                                    continue
                 
                 else:
                     if isGameOver == 'b':
@@ -504,14 +527,6 @@ def main():
                     if len(buffer) == 2:
                         MODE = buffer[0]
                         if MODE == ACK:
-                            MAIN_STATE = RESET_IDLE
-                        elif MODE == STOP:
-                            print('Stopping...')
-                            packet = bytearray()
-                            packet.append(ACK)
-                            packet.append(DELIMITER)
-                            ser.write(packet)
-
                             MAIN_STATE = INIT
 
 if __name__ == '__main__':

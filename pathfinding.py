@@ -123,30 +123,30 @@ def mapping(board, start, end):
 
     if mappedEnd is None:
         # captured piece location
-        mappedEnd = ((WLeft) * 2, 18)
+        mappedEnd = (18, (WLeft) * 2)
         whiteCaptured[1][WLeft] = 0
-
+    
     return maze, mappedStart, mappedEnd
 
 def main():
     # Board will be changed to checkers board from main.py
-    board = [['-', 'b', '-', 'b', '-', 'b', '-', 'b'],
-            ['b', '-', 'b', '-', 'b', '-', 'b', '-'],
+    board = [['-', '-', '-', '-', '-', '-', '-', '-'],
             ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', 'b', '-', '-', '-', '-', '-', '-'],
             ['-', '-', '-', '-', '-', '-', '-', '-'],
+            ['-', '-', '-', 'b', '-', '-', '-', '-'],
+            ['-', '-', '-', '-', 'w', '-', '-', '-'],
             ['-', '-', '-', '-', '-', '-', '-', '-'],
-            ['-', '-', '-', '-', '-', '-', '-', '-'],
-            ['-', 'w', '-', 'w', '-', 'w', '-', 'w'],
-            ['w', '-', 'w', '-', 'w', '-', 'w', '-']]
+            ['-', '-', '-', '-', '-', '-', 'W', '-']]
     
-    maze, start, end = mapping(board, (1, 0), (3, 3))
+    maze, start, end = mapping(board, (6, 5), None)
 
     print(f"Dimensions of maze: {len(maze)}x{len(maze[0])}")
     print(f"Start: {start}")
     print(f"End: {end}")
 
-    # for row in maze:
-    #     print(row)
+    for row in maze:
+        print(row)
 
     path = astar(maze, start, end)
     print(path)

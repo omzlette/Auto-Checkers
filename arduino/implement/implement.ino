@@ -40,7 +40,7 @@
 #define SQUARES 32
 #define MAX_BUFFER_LENGTH 32
 
-#define DEMO 1
+#define DEMO 0
 
 // Declare Variables
 #if DEMO == 1
@@ -464,11 +464,13 @@ ISR(TIMER2_COMPB_vect) {
   */
   _LEDBlink++;
 
-  digitalWrite(LED9_DRAW, drawStatus);
-  digitalWrite(LED7_BTURN, blackTurnStatus);
-  digitalWrite(LED8_WTURN, whiteTurnStatus);
-  digitalWrite(LED6_ERROR, errorStatus);
-  if(_LEDBlink % 300 == 0){
+  if(!whiteWinStatus && !blackWinStatus){
+    digitalWrite(LED9_DRAW, drawStatus);
+    digitalWrite(LED7_BTURN, blackTurnStatus);
+    digitalWrite(LED8_WTURN, whiteTurnStatus);
+    digitalWrite(LED6_ERROR, errorStatus);
+  }
+  if(_LEDBlink % 1000 == 0){
     if(whiteWinStatus){
       digitalWrite(LED8_WTURN, !digitalRead(LED8_WTURN));
     }
@@ -546,6 +548,8 @@ void resetStatus(){
   whiteTurnStatus = false;
   errorStatus = false;
   illegalMoveStatus = false;
+
+  // boardCounter = 0;
 }
 
 void sendBoardData(){
@@ -564,42 +568,42 @@ void sendBoardData(){
   cli();
   byte checksum = 0;
 
-  if(DEMO){
-    if(boardCounter == 0){
-      for (int i = 0; i < 8; i++){
-        checksum ^= demoBoard0[i];
-      }
-      Serial.write(demoBoard0, 8);
-      Serial.write(checksum);
-      Serial.write(DELIMITER);
-    }
-    else if (boardCounter == 1){
-      for (int i = 0; i < 8; i++){
-        checksum ^= demoBoard1[i];
-      }
-      Serial.write(demoBoard1, 8);
-      Serial.write(checksum);
-      Serial.write(DELIMITER);
-    }
-    else if (boardCounter == 2){
-      for (int i = 0; i < 8; i++){
-        checksum ^= demoBoard2[i];
-      }
-      Serial.write(demoBoard2, 8);
-      Serial.write(checksum);
-      Serial.write(DELIMITER);
-    }
-    else if (boardCounter == 3){
-      for (int i = 0; i < 8; i++){
-        checksum ^= demoBoard3[i];
-      }
-      Serial.write(demoBoard3, 8);
-      Serial.write(checksum);
-      Serial.write(DELIMITER);
-    }
-    boardCounter++;
-  }
-  else{
+  // if(DEMO){
+  //   if(boardCounter == 0){
+  //     for (int i = 0; i < 8; i++){
+  //       checksum ^= demoBoard0[i];
+  //     }
+  //     Serial.write(demoBoard0, 8);
+  //     Serial.write(checksum);
+  //     Serial.write(DELIMITER);
+  //   }
+  //   else if (boardCounter == 1){
+  //     for (int i = 0; i < 8; i++){
+  //       checksum ^= demoBoard1[i];
+  //     }
+  //     Serial.write(demoBoard1, 8);
+  //     Serial.write(checksum);
+  //     Serial.write(DELIMITER);
+  //   }
+  //   else if (boardCounter == 2){
+  //     for (int i = 0; i < 8; i++){
+  //       checksum ^= demoBoard2[i];
+  //     }
+  //     Serial.write(demoBoard2, 8);
+  //     Serial.write(checksum);
+  //     Serial.write(DELIMITER);
+  //   }
+  //   else if (boardCounter == 3){
+  //     for (int i = 0; i < 8; i++){
+  //       checksum ^= demoBoard3[i];
+  //     }
+  //     Serial.write(demoBoard3, 8);
+  //     Serial.write(checksum);
+  //     Serial.write(DELIMITER);
+  //   }
+  //   boardCounter++;
+  // }
+  // else{
     // Read the board state
     uint8_t boardState_row1 = 0;
     uint8_t boardState_row2 = 0;
@@ -644,7 +648,7 @@ void sendBoardData(){
     boardState_buffer[8] = checksum;
     Serial.write(boardState_buffer, 9);
     Serial.write(DELIMITER);
-  } 
+  // } 
 
   sei();
 }
@@ -795,11 +799,11 @@ void stateManagement(const byte mode, const char * data, const unsigned int data
               break;
             // Mode 0xF2: Requested for stepper movement
             case 0xF2:
+              Serial.write(ACK);
+              Serial.write(DELIMITER);
               _mode = mode;
               _dataBuffer = data;
               _dataLength = dataLength;
-              Serial.write(ACK);
-              Serial.write(DELIMITER);
               state = MOTOR_RUNNING;
               break;
             // Mode 0xF3: Requested for status indication
